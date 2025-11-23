@@ -9,6 +9,9 @@ import {
     cleanupOldItems
 } from './utils/fileStorage.js';
 
+import { JSDOM } from 'jsdom';
+import { Readability } from '@mozilla/readability';
+
 const app = express();
 const PORT = 3001;
 
@@ -215,6 +218,40 @@ app.get('/api/proxy', async (req, res) => {
     } catch (error) {
         console.error('Proxy error:', error);
         res.status(500).json({ error: 'Failed to fetch URL' });
+    }
+});
+
+// GET article content
+app.get('/api/article', async (req, res) => {
+    const { url } = req.query;
+    if (!url) {
+        return res.status(400).json({ error: 'URL is required' });
+    }
+
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
+        
+        if (!response.ok) {
+            return res.status(response.status).json({ error: `Failed to fetch: ${response.statusText}` });
+        }
+        
+        const html = await response.text();
+        const doc = new JSDOM(html, { url });
+        const reader = new Readability(doc.window.document);
+        const article = reader.parse();
+
+        if (article) {
+            res.json(article);
+        } else {
+            res.status(500).json({ error: 'Failed to parse article' });
+        }
+    } catch (error) {
+        console.error('Article fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch article' });
     }
 });
 

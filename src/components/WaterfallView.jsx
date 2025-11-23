@@ -154,13 +154,13 @@ export function WaterfallView({ feeds }) {
                   )}
 
                   <div className="p-3">
-                    <h3 className="font-bold text-gray-900 mb-1.5 leading-snug text-sm line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                    <h3 className="font-bold text-gray-900 mb-1.5 leading-snug text-sm line-clamp-2 group-hover:text-primary-600 transition-colors">
                       {item.title}
                     </h3>
 
                     <div className="flex items-center justify-between mt-2 h-6">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <div className="w-5 h-5 rounded-full bg-indigo-50 flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-indigo-600">
+                        <div className="w-5 h-5 rounded-full bg-primary-50 flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-primary-600">
                           {item.feedTitle.charAt(0).toUpperCase()}
                         </div>
                         <span className="text-[11px] font-medium text-gray-600 truncate max-w-[100px]">
@@ -175,7 +175,7 @@ export function WaterfallView({ feeds }) {
                         {isJavDb && javId && (
                           <button
                             onClick={(e) => handleCopy(e, javId)}
-                            className="p-1.5 hover:bg-indigo-50 rounded-full transition-colors text-gray-400 hover:text-indigo-600 flex-shrink-0"
+                            className="p-1.5 hover:bg-primary-50 rounded-full transition-colors text-gray-400 hover:text-primary-600 flex-shrink-0"
                             title={`Copy ID: ${javId}`}
                           >
                             {copiedId === javId ? <Check size={14} /> : <Copy size={14} />}

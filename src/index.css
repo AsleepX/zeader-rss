@@ -1,9 +1,57 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary-50: rgb(var(--theme-primary-50));
+  --color-primary-100: rgb(var(--theme-primary-100));
+  --color-primary-200: rgb(var(--theme-primary-200));
+  --color-primary-300: rgb(var(--theme-primary-300));
+  --color-primary-400: rgb(var(--theme-primary-400));
+  --color-primary-500: rgb(var(--theme-primary-500));
+  --color-primary-600: rgb(var(--theme-primary-600));
+  --color-primary-700: rgb(var(--theme-primary-700));
+  --color-primary-800: rgb(var(--theme-primary-800));
+  --color-primary-900: rgb(var(--theme-primary-900));
+  --color-primary-950: rgb(var(--theme-primary-950));
+}
+
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+
+  /* Default Theme Colors (Indigo) */
+  --theme-primary-50: 238 242 255;
+  --theme-primary-100: 224 231 255;
+  --theme-primary-200: 199 210 254;
+  --theme-primary-300: 165 180 252;
+  --theme-primary-400: 129 140 248;
+  --theme-primary-500: 99 102 241;
+  --theme-primary-600: 79 70 229;
+  --theme-primary-700: 67 56 202;
+  --theme-primary-800: 55 48 163;
+  --theme-primary-900: 49 46 129;
+  --theme-primary-950: 30 27 75;
 }
 
 body {
   @apply bg-gray-50 text-gray-900;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.8);
 }

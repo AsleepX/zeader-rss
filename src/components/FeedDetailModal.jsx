@@ -77,7 +77,7 @@ export function FeedDetailModal({ item, onClose }) {
                             href={item.link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
+                            className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-full transition-colors"
                             title="Open in browser"
                         >
                             <ExternalLink className="w-5 h-5" />
@@ -107,7 +107,7 @@ export function FeedDetailModal({ item, onClose }) {
                     ) : (
                         <div className="p-6">
                             <div
-                                className="prose prose-lg max-w-none prose-img:rounded-lg prose-img:shadow-md prose-img:mx-auto prose-a:text-indigo-600 hover:prose-a:text-indigo-700 [&_img]:block [&_img]:mx-auto [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:shadow-md"
+                                className="prose prose-lg max-w-none prose-img:rounded-lg prose-img:shadow-md prose-img:mx-auto prose-a:text-primary-600 hover:prose-a:text-primary-700 [&_img]:block [&_img]:mx-auto [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:shadow-md"
                                 dangerouslySetInnerHTML={createMarkup()}
                             />
                         </div>

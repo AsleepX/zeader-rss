@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PanelLeft } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { ArticleView } from './components/ArticleView';
 import { WaterfallView } from './components/WaterfallView';
@@ -6,6 +7,7 @@ import { AddFeedModal } from './components/AddFeedModal';
 import { CreateFolderModal } from './components/CreateFolderModal';
 import { ImportOpmlModal } from './components/ImportOpmlModal';
 import { useFeedStore } from './store/useFeedStore';
+import { useThemeStore } from './store/useThemeStore';
 
 function App() {
   const [currentView, setCurrentView] = useState('article'); // 'article' or 'waterfall'
@@ -15,6 +17,12 @@ function App() {
   const [isImportOpmlModalOpen, setIsImportOpmlModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { feeds, folders, loadFeeds, refreshAllFeeds, isLoading, selectedSource } = useFeedStore();
+  const { applyTheme } = useThemeStore();
+
+  // Initialize theme
+  useEffect(() => {
+    applyTheme();
+  }, [applyTheme]);
 
   // Load feeds from backend on mount
   useEffect(() => {
@@ -67,6 +75,13 @@ function App() {
       </div>
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="absolute top-4 left-4 z-50 p-2 text-gray-500 hover:bg-gray-100 bg-white/80 backdrop-blur-sm rounded-lg transition-all duration-300 border border-gray-200 opacity-0 hover:opacity-100"
+          title={isSidebarOpen ? "Close Sidebar ([)" : "Open Sidebar ([)"}
+        >
+          <PanelLeft className="w-5 h-5" />
+        </button>
         <div className="flex-1 overflow-y-auto scroll-smooth">
           {currentView === 'article' ? (
             <ArticleView feeds={currentFeeds} />

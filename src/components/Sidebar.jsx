@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Grid, Plus, Trash2, Rss, Image, BookOpen, Settings, Folder, FolderOpen, ChevronRight, ChevronDown, MoreVertical, Upload, RefreshCw, Download, Edit } from 'lucide-react';
 import { useFeedStore } from '../store/useFeedStore';
+import { useThemeStore } from '../store/useThemeStore';
 import clsx from 'clsx';
 import { DndContext, useDraggable, useDroppable, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -26,14 +27,14 @@ const DraggableFeed = ({ feed, onRemove, isSelected, onClick, onContextMenu }) =
       onClick={onClick}
       onContextMenu={onContextMenu}
       className={clsx(
-        "group flex items-center justify-between px-3 py-2 rounded-lg transition-colors cursor-grab active:cursor-grabbing touch-none",
+        "group flex items-center justify-between px-1.5 py-2 rounded-lg transition-colors cursor-grab active:cursor-grabbing touch-none",
         isDragging ? "opacity-30" : "",
-        isSelected ? "bg-indigo-50 text-indigo-600" : "hover:bg-gray-50"
+        isSelected ? "bg-primary-50 text-primary-600" : "hover:bg-gray-50"
       )}
     >
       <div className="flex items-center gap-3 overflow-hidden">
-        <div className={clsx("w-1 h-1 rounded-full transition-colors", isSelected ? "bg-indigo-600" : "bg-gray-300 group-hover:bg-indigo-400")} />
-        <span className={clsx("text-sm truncate", isSelected ? "text-indigo-900 font-medium" : "text-gray-600 group-hover:text-gray-900")}>{feed.title}</span>
+        <div className={clsx("w-1 h-1 rounded-full transition-colors", isSelected ? "bg-primary-600" : "bg-gray-300 group-hover:bg-primary-400")} />
+        <span className={clsx("text-sm truncate", isSelected ? "text-primary-900 font-medium" : "text-gray-600 group-hover:text-gray-900")}>{feed.title}</span>
       </div>
       <button
         onClick={(e) => { e.stopPropagation(); onRemove(feed.id); }}
@@ -77,12 +78,12 @@ const FolderItem = ({ folder, isExpanded, toggleFolder, onDelete, children, isSe
     >
       <div 
         ref={setDroppableRef} 
-        className={clsx("rounded-lg transition-colors", isOver && "bg-indigo-50 ring-1 ring-indigo-200")}
+        className={clsx("rounded-lg transition-colors", isOver && "bg-primary-50 ring-1 ring-primary-200")}
       >
           <div 
               className={clsx(
-                  "group flex items-center justify-between px-4 py-2 rounded-lg cursor-pointer transition-colors",
-                  isSelected ? "bg-indigo-50 text-indigo-600" : "hover:bg-gray-50 text-gray-600 hover:text-gray-900"
+                  "group flex items-center justify-between px-1.5 py-2 rounded-lg cursor-pointer transition-colors",
+                  isSelected ? "bg-primary-50 text-primary-600" : "hover:bg-gray-50 text-gray-600 hover:text-gray-900"
               )}
               onClick={(e) => {
                   e.stopPropagation();
@@ -97,7 +98,7 @@ const FolderItem = ({ folder, isExpanded, toggleFolder, onDelete, children, isSe
               >
                 {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </div>
-              {isExpanded ? <FolderOpen className="w-4 h-4 text-indigo-500" /> : <Folder className="w-4 h-4 text-indigo-500" />}
+              {isExpanded ? <FolderOpen className="w-4 h-4 text-primary-500" /> : <Folder className="w-4 h-4 text-primary-500" />}
               <span className="text-sm font-medium">{folder.name}</span>
               </div>
               <button
@@ -110,7 +111,7 @@ const FolderItem = ({ folder, isExpanded, toggleFolder, onDelete, children, isSe
           </div>
           
           {isExpanded && (
-              <div className="ml-4 border-l-2 border-gray-100 pl-2">
+              <div className="ml-2 border-l-2 border-gray-100 pl-2">
               {children}
               </div>
           )}
@@ -129,7 +130,7 @@ const SectionDroppable = ({ id, title, count, children, onContextMenu, isActive,
     return (
         <div 
             ref={setNodeRef} 
-            className={clsx("mt-6 rounded-lg transition-colors p-2 -mx-2", isOver && "bg-indigo-50/50 ring-1 ring-indigo-100")}
+            className={clsx("mt-6 rounded-lg transition-colors p-2 -mx-2", isOver && "bg-primary-50/50 ring-1 ring-primary-100")}
             onContextMenu={onContextMenu}
         >
             <button
@@ -137,15 +138,15 @@ const SectionDroppable = ({ id, title, count, children, onContextMenu, isActive,
                 className={clsx(
                     "w-full flex items-center justify-between px-2 py-2 rounded-lg transition-all duration-200 mb-2 group",
                     isActive
-                        ? "bg-indigo-50 text-indigo-600"
+                        ? "bg-primary-50 text-primary-600"
                         : "hover:bg-gray-50 text-gray-500 hover:text-gray-900"
                 )}
             >
                 <div className="flex items-center gap-2">
-                    {Icon && <Icon className={clsx("w-4 h-4", isActive ? "text-indigo-600" : "text-gray-400 group-hover:text-gray-500")} />}
-                    <span className={clsx("text-sm font-medium", isActive ? "text-indigo-900" : "")}>{title}</span>
+                    {Icon && <Icon className={clsx("w-4 h-4", isActive ? "text-primary-600" : "text-gray-400 group-hover:text-gray-500")} />}
+                    <span className={clsx("text-sm font-medium", isActive ? "text-primary-900" : "")}>{title}</span>
                 </div>
-                <span className={clsx("text-xs", isActive ? "text-indigo-400" : "text-gray-300")}>{count}</span>
+                <span className={clsx("text-xs", isActive ? "text-primary-400" : "text-gray-300")}>{count}</span>
             </button>
             <div className="space-y-1">
                 {children}
@@ -186,6 +187,7 @@ const FeedList = ({ items, onRemove, selectedSource, onSelectFeed, onContextMenu
 
 export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder, onImportOpml }) {
   const { feeds, folders, removeFeed, deleteFolder, moveFeed, updateFeedViewType, updateFolderViewType, selectedSource, selectSource, refreshAllFeeds, isLoading, renameFolder, renameFeed } = useFeedStore();
+  const { themeColor, setThemeColor } = useThemeStore();
   const [expandedFolders, setExpandedFolders] = useState({});
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeDragFeed, setActiveDragFeed] = useState(null);
@@ -295,7 +297,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
       const feed = feeds.find(f => f.id === selectedSource.id);
       if (feed) pageTitle = feed.title;
   } else {
-      pageTitle = currentView === 'waterfall' ? 'All Gallery Feeds' : 'All Articles';
+      pageTitle = currentView === 'waterfall' ? 'All Gallerys' : 'All Articles';
   }
 
   const sensors = useSensors(
@@ -423,7 +425,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
       <div className="p-6 pb-4">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2 tracking-tight">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
+            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white">
               <Rss className="w-5 h-5" />
             </div>
             Zeader
@@ -431,7 +433,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
           <button
             onClick={refreshAllFeeds}
             disabled={isLoading}
-            className={`p-2 text-gray-400 hover:text-indigo-600 rounded-full hover:bg-indigo-50 transition-all ${isLoading ? 'animate-spin' : ''}`}
+            className={`p-2 text-gray-400 hover:text-primary-600 rounded-full hover:bg-primary-50 transition-all ${isLoading ? 'animate-spin' : ''}`}
             title="Refresh Feeds"
           >
             <RefreshCw className="w-4 h-4" />
@@ -542,6 +544,19 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
                 <Trash2 className="w-4 h-4" />
                 Clean Up
               </button>
+              
+              {/* Theme Color Picker */}
+              <div className="px-4 py-3 border-t border-gray-50 flex items-center justify-between group cursor-pointer hover:bg-gray-50 transition-colors">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Theme Color</span>
+                <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-200 cursor-pointer hover:scale-110 transition-transform shadow-sm ring-2 ring-white">
+                  <input 
+                      type="color" 
+                      value={themeColor}
+                      onChange={(e) => setThemeColor(e.target.value)}
+                      className="absolute -top-2 -left-2 w-10 h-10 p-0 border-0 cursor-pointer"
+                  />
+                </div>
+              </div>
             </div>
           )}
           
@@ -568,7 +583,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
             {activeDragFeed ? (
                 <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white shadow-lg border border-gray-100 w-[240px]">
                     <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-1 h-1 rounded-full bg-indigo-400" />
+                        <div className="w-1 h-1 rounded-full bg-primary-400" />
                         <span className="text-sm truncate text-gray-900 font-medium">{activeDragFeed.title}</span>
                     </div>
                 </div>
@@ -590,7 +605,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
               onCreateFolder(contextMenu.type);
               setContextMenu(null);
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors text-left"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary-600 transition-colors text-left"
           >
             <Folder className="w-4 h-4" />
             New Folder
@@ -610,7 +625,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
               }
               setContextMenu(null);
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors text-left"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary-600 transition-colors text-left"
           >
             <Edit className="w-4 h-4" />
             Rename
