@@ -49,7 +49,9 @@ function App() {
 
     // Then filter by selectedSource
     if (selectedSource.type === 'all') return true;
-    if (selectedSource.type === 'folder') return f.folderId === selectedSource.id;
+    if (selectedSource.type === 'folder') {
+      return f.folderId && f.folderId === selectedSource.id;
+    }
     if (selectedSource.type === 'feed') return f.id === selectedSource.id;
     
     return true;

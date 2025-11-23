@@ -162,7 +162,7 @@ const RootDroppable = ({ children }) => {
     });
 
     return (
-        <div ref={setNodeRef} className={clsx("flex-1 overflow-y-auto px-4 space-y-8 scrollbar-hide pb-20", isOver && "bg-gray-50/50")}>
+        <div ref={setNodeRef} className={clsx("flex-1 overflow-y-auto px-4 space-y-8 pb-20", isOver && "bg-gray-50/50")}>
             {children}
         </div>
     );
@@ -334,8 +334,10 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
             const folderId = targetId.replace('folder-', '');
             if (feed.folderId !== folderId) moveFeed(feedId, folderId);
         } else if (targetId === 'section-gallery') {
+            if (feed.folderId) moveFeed(feedId, null);
             if (feed.viewType !== 'waterfall') updateFeedViewType(feedId, 'waterfall');
         } else if (targetId === 'section-article') {
+            if (feed.folderId) moveFeed(feedId, null);
             if (feed.viewType !== 'article') updateFeedViewType(feedId, 'article');
         }
     }
@@ -344,10 +346,25 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
     if (activeType === 'folder') {
         const folderId = activeId.replace('folder-drag-', '');
         
+        let targetViewType = null;
+
         if (targetId === 'section-gallery') {
-            updateFolderViewType(folderId, 'waterfall');
+            targetViewType = 'waterfall';
         } else if (targetId === 'section-article') {
-            updateFolderViewType(folderId, 'article');
+            targetViewType = 'article';
+        } else if (targetId.startsWith('folder-') && !targetId.startsWith('folder-drag-')) {
+            // Dragged over another folder
+            const targetFolderId = targetId.replace('folder-', '');
+            const targetFolder = folders.find(f => f.id === targetFolderId);
+            if (targetFolder) {
+                const type = getFolderType(targetFolder);
+                if (type === 'waterfall') targetViewType = 'waterfall';
+                if (type === 'article') targetViewType = 'article';
+            }
+        }
+
+        if (targetViewType) {
+            updateFolderViewType(folderId, targetViewType);
         }
     }
   };

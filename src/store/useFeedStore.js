@@ -376,21 +376,28 @@ export const useFeedStore = create((set, get) => ({
 
     updateFolderViewType: async (folderId, viewType) => {
         const previousFeeds = get().feeds;
-        const feedsInFolder = previousFeeds.filter(f => f.folderId === folderId);
+        const previousFolders = get().folders;
         
-        set(state => ({
-            feeds: state.feeds.map(f => 
-                f.folderId === folderId ? { ...f, viewType } : f
-            )
-        }));
+        const updatedFeeds = previousFeeds.map(f => 
+            f.folderId === folderId ? { ...f, viewType } : f
+        );
+
+        const updatedFolders = previousFolders.map(f =>
+            f.id === folderId ? { ...f, viewType } : f
+        );
+
+        set({ feeds: updatedFeeds, folders: updatedFolders });
 
         try {
-            // Update all feeds in the folder
-            const updates = feedsInFolder.map(f => ({ ...f, viewType }));
-            await api.updateAllFeeds(updates);
+            await api.updateAllFeeds(updatedFeeds);
+            await api.updateFolder(folderId, { viewType });
         } catch (error) {
             console.error('Failed to update folder view type:', error);
-            set({ feeds: previousFeeds, error: 'Failed to update folder view type' });
+            set({ 
+                feeds: previousFeeds, 
+                folders: previousFolders,
+                error: 'Failed to update folder view type' 
+            });
         }
     },
 

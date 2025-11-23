@@ -255,6 +255,32 @@ app.get('/api/article', async (req, res) => {
     }
 });
 
+// PUT update folder
+app.put('/api/folders/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        const data = readFeeds();
+
+        if (!data.folders) return res.status(404).json({ error: 'Folder not found' });
+
+        const folderIndex = data.folders.findIndex(f => f.id === id);
+        if (folderIndex === -1) {
+            return res.status(404).json({ error: 'Folder not found' });
+        }
+
+        data.folders[folderIndex] = { ...data.folders[folderIndex], ...updates };
+
+        if (writeMainConfig(data)) {
+            res.json(data.folders[folderIndex]);
+        } else {
+            res.status(500).json({ error: 'Failed to update folder' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update folder' });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 RSS Reader Backend running on http://localhost:${PORT}`);
 });

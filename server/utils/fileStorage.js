@@ -208,8 +208,14 @@ export function cleanupOldItems(daysToKeep = 30) {
 
                 const initialCount = items.length;
                 const filteredItems = items.filter(item => {
-                    const itemDate = item.isoDate ? new Date(item.isoDate) : (item.pubDate ? new Date(item.pubDate) : null);
-                    if (!itemDate) return true; // Keep items without date to be safe
+                    let itemDate = item.isoDate ? new Date(item.isoDate) : (item.pubDate ? new Date(item.pubDate) : null);
+                    
+                    // Check if date is valid
+                    if (itemDate && isNaN(itemDate.getTime())) {
+                        itemDate = null;
+                    }
+
+                    if (!itemDate) return false; // Remove items without valid date
                     return itemDate >= cutoffDate;
                 });
 
