@@ -88,6 +88,38 @@ export const useFeedStore = create((set, get) => ({
         }
     },
 
+    renameFolder: async (id, newName) => {
+        const previousFolders = get().folders;
+        set(state => ({
+            folders: state.folders.map(f => 
+                f.id === id ? { ...f, name: newName } : f
+            )
+        }));
+
+        try {
+            await api.updateFolder(id, { name: newName });
+        } catch (error) {
+            console.error('Failed to rename folder:', error);
+            set({ folders: previousFolders, error: 'Failed to rename folder' });
+        }
+    },
+
+    renameFeed: async (id, newTitle) => {
+        const previousFeeds = get().feeds;
+        set(state => ({
+            feeds: state.feeds.map(f => 
+                f.id === id ? { ...f, title: newTitle } : f
+            )
+        }));
+
+        try {
+            await api.updateFeed(id, { title: newTitle });
+        } catch (error) {
+            console.error('Failed to rename feed:', error);
+            set({ feeds: previousFeeds, error: 'Failed to rename feed' });
+        }
+    },
+
     moveFeed: async (feedId, folderId) => {
         const previousFeeds = get().feeds;
         

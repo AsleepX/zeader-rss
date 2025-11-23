@@ -63,6 +63,12 @@ export const api = {
         body: JSON.stringify(folder),
     }),
 
+    // Update folder
+    updateFolder: (id, updates) => request(`/folders/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+    }),
+
     // Delete folder
     deleteFolder: (id) => request(`/folders/${id}`, {
         method: 'DELETE',

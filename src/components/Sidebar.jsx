@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Grid, Plus, Trash2, Rss, Image, BookOpen, Settings, Folder, FolderOpen, ChevronRight, ChevronDown, MoreVertical, Upload, RefreshCw, Download } from 'lucide-react';
+import { Layout, Grid, Plus, Trash2, Rss, Image, BookOpen, Settings, Folder, FolderOpen, ChevronRight, ChevronDown, MoreVertical, Upload, RefreshCw, Download, Edit } from 'lucide-react';
 import { useFeedStore } from '../store/useFeedStore';
 import clsx from 'clsx';
 import { DndContext, useDraggable, useDroppable, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
@@ -7,7 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { createPortal } from 'react-dom';
 
 // Draggable Feed Component
-const DraggableFeed = ({ feed, onRemove, isSelected, onClick }) => {
+const DraggableFeed = ({ feed, onRemove, isSelected, onClick, onContextMenu }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: feed.id,
     data: { feed }
@@ -24,6 +24,7 @@ const DraggableFeed = ({ feed, onRemove, isSelected, onClick }) => {
       {...listeners} 
       {...attributes}
       onClick={onClick}
+      onContextMenu={onContextMenu}
       className={clsx(
         "group flex items-center justify-between px-3 py-2 rounded-lg transition-colors cursor-grab active:cursor-grabbing touch-none",
         isDragging ? "opacity-30" : "",
@@ -46,7 +47,7 @@ const DraggableFeed = ({ feed, onRemove, isSelected, onClick }) => {
 };
 
 // Draggable & Droppable Folder Component
-const FolderItem = ({ folder, isExpanded, toggleFolder, onDelete, children, isSelected, onSelect }) => {
+const FolderItem = ({ folder, isExpanded, toggleFolder, onDelete, children, isSelected, onSelect, onContextMenu }) => {
   const draggable = useDraggable({
     id: `folder-drag-${folder.id}`,
     data: { folder, type: 'folder' }
@@ -87,6 +88,7 @@ const FolderItem = ({ folder, isExpanded, toggleFolder, onDelete, children, isSe
                   e.stopPropagation();
                   onSelect(folder.id);
               }}
+              onContextMenu={onContextMenu}
           >
               <div className="flex items-center gap-2">
               <div 
@@ -167,7 +169,7 @@ const RootDroppable = ({ children }) => {
 
 
 
-const FeedList = ({ items, onRemove, selectedSource, onSelectFeed }) => (
+const FeedList = ({ items, onRemove, selectedSource, onSelectFeed, onContextMenu }) => (
   <div className="space-y-1 mt-1 px-2">
     {items.map(feed => (
       <DraggableFeed 
@@ -176,13 +178,14 @@ const FeedList = ({ items, onRemove, selectedSource, onSelectFeed }) => (
         onRemove={onRemove} 
         isSelected={selectedSource?.type === 'feed' && selectedSource?.id === feed.id}
         onClick={() => onSelectFeed(feed.id)}
+        onContextMenu={(e) => onContextMenu && onContextMenu(e, feed)}
       />
     ))}
   </div>
 );
 
 export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder, onImportOpml }) {
-  const { feeds, folders, removeFeed, deleteFolder, moveFeed, updateFeedViewType, updateFolderViewType, selectedSource, selectSource, refreshAllFeeds, isLoading } = useFeedStore();
+  const { feeds, folders, removeFeed, deleteFolder, moveFeed, updateFeedViewType, updateFolderViewType, selectedSource, selectSource, refreshAllFeeds, isLoading, renameFolder, renameFeed } = useFeedStore();
   const [expandedFolders, setExpandedFolders] = useState({});
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeDragFeed, setActiveDragFeed] = useState(null);
@@ -221,13 +224,15 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
     return () => window.removeEventListener('click', handleClick);
   }, []);
 
-  const handleContextMenu = (e, type) => {
+  const handleContextMenu = (e, type, id = null, name = null) => {
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
-      type
+      type,
+      id,
+      name
     });
   };
 
@@ -393,6 +398,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
             if (type === 'article') setCurrentView('article');
             selectSource('folder', folder.id);
           }}
+          onContextMenu={(e) => handleContextMenu(e, 'folder', folder.id, folder.name)}
         >
           {isExpanded && <FeedList 
             items={folderFeeds} 
@@ -404,6 +410,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
               if (feed?.viewType === 'article') setCurrentView('article');
               selectSource('feed', id);
             }}
+            onContextMenu={(e, feed) => handleContextMenu(e, 'feed', feed.id, feed.title)}
           />}
         </FolderItem>
       </div>
@@ -455,6 +462,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
                     setCurrentView('waterfall');
                     selectSource('feed', id);
                 }}
+                onContextMenu={(e, feed) => handleContextMenu(e, 'feed', feed.id, feed.title)}
             />
         </SectionDroppable>
 
@@ -477,6 +485,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
                     setCurrentView('article');
                     selectSource('feed', id);
                 }}
+                onContextMenu={(e, feed) => handleContextMenu(e, 'feed', feed.id, feed.title)}
             />
         </SectionDroppable>
 
@@ -575,16 +584,38 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
         style={{ top: contextMenu.y, left: contextMenu.x }}
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={() => {
-            onCreateFolder(contextMenu.type);
-            setContextMenu(null);
-          }}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors text-left"
-        >
-          <Folder className="w-4 h-4" />
-          New Folder
-        </button>
+        {(contextMenu.type === 'waterfall' || contextMenu.type === 'article') && (
+          <button
+            onClick={() => {
+              onCreateFolder(contextMenu.type);
+              setContextMenu(null);
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors text-left"
+          >
+            <Folder className="w-4 h-4" />
+            New Folder
+          </button>
+        )}
+
+        {(contextMenu.type === 'folder' || contextMenu.type === 'feed') && (
+          <button
+            onClick={() => {
+              const newName = window.prompt(`Rename ${contextMenu.type}`, contextMenu.name);
+              if (newName && newName.trim() !== '') {
+                if (contextMenu.type === 'folder') {
+                  renameFolder(contextMenu.id, newName.trim());
+                } else {
+                  renameFeed(contextMenu.id, newName.trim());
+                }
+              }
+              setContextMenu(null);
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-colors text-left"
+          >
+            <Edit className="w-4 h-4" />
+            Rename
+          </button>
+        )}
       </div>,
       document.body
     )}
