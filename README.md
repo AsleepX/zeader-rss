@@ -2,7 +2,9 @@
 
 A modern, personal RSS reader application built with React and Node.js.
 
-![Zeader Screenshot](images/zeader.png)
+![Zeader Screenshot](images/zeader_Gallery.png)
+
+![Zeader Screenshot](images/zeader_Article.png)
 
 ## Features
 
