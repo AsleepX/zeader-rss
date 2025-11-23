@@ -1,0 +1,223 @@
+import express from 'express';
+import cors from 'cors';
+import { 
+    readFeeds, 
+    writeFeeds, 
+    writeMainConfig, 
+    updateFeedItems, 
+    deleteFeedStorage,
+    cleanupOldItems
+} from './utils/fileStorage.js';
+
+const app = express();
+const PORT = 3001;
+
+// Middleware
+app.use(cors());
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '200mb', extended: true }));
+
+// GET all feeds
+app.get('/api/feeds', (req, res) => {
+    try {
+        const data = readFeeds();
+        res.json(data.feeds);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to read feeds' });
+    }
+});
+
+// GET all folders
+app.get('/api/folders', (req, res) => {
+    try {
+        const data = readFeeds();
+        res.json(data.folders || []);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to read folders' });
+    }
+});
+
+// POST new folder
+app.post('/api/folders', (req, res) => {
+    try {
+        const newFolder = req.body;
+        const data = readFeeds();
+        if (!data.folders) data.folders = [];
+        data.folders.push(newFolder);
+
+        if (writeMainConfig(data)) {
+            res.status(201).json(newFolder);
+        } else {
+            res.status(500).json({ error: 'Failed to save folder' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to create folder' });
+    }
+});
+
+// Cleanup old items
+app.post('/api/cleanup', (req, res) => {
+    try {
+        const { days } = req.body;
+        const result = cleanupOldItems(days || 30);
+        if (result.success) {
+            res.json(result);
+        } else {
+            res.status(500).json({ error: result.error });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to cleanup items' });
+    }
+});
+
+// DELETE folder
+app.delete('/api/folders/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const data = readFeeds();
+        
+        if (!data.folders) return res.status(404).json({ error: 'Folder not found' });
+
+        const folderIndex = data.folders.findIndex(f => f.id === id);
+        if (folderIndex === -1) {
+            return res.status(404).json({ error: 'Folder not found' });
+        }
+
+        data.folders.splice(folderIndex, 1);
+
+        // Also remove folderId from feeds that were in this folder
+        data.feeds = data.feeds.map(feed => {
+            if (feed.folderId === id) {
+                const { folderId, ...rest } = feed;
+                return rest;
+            }
+            return feed;
+        });
+
+        if (writeMainConfig(data)) {
+            res.status(204).send();
+        } else {
+            res.status(500).json({ error: 'Failed to delete folder' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete folder' });
+    }
+});
+
+
+// POST new feed
+app.post('/api/feeds', (req, res) => {
+    try {
+        const newFeed = req.body;
+        const data = readFeeds();
+        data.feeds.push(newFeed);
+
+        const configSaved = writeMainConfig(data);
+        const itemsSaved = updateFeedItems(newFeed.id, newFeed.items || []);
+
+        if (configSaved && itemsSaved) {
+            res.status(201).json(newFeed);
+        } else {
+            res.status(500).json({ error: 'Failed to save feed' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to add feed' });
+    }
+});
+
+// PUT update feed
+app.put('/api/feeds/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        const data = readFeeds();
+
+        const feedIndex = data.feeds.findIndex(f => f.id === id);
+        if (feedIndex === -1) {
+            return res.status(404).json({ error: 'Feed not found' });
+        }
+
+        data.feeds[feedIndex] = { ...data.feeds[feedIndex], ...updates };
+
+        const configSaved = writeMainConfig(data);
+        const itemsSaved = updateFeedItems(id, data.feeds[feedIndex].items || []);
+
+        if (configSaved && itemsSaved) {
+            res.json(data.feeds[feedIndex]);
+        } else {
+            res.status(500).json({ error: 'Failed to update feed' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update feed' });
+    }
+});
+
+// DELETE feed
+app.delete('/api/feeds/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const data = readFeeds();
+
+        const feedIndex = data.feeds.findIndex(f => f.id === id);
+        if (feedIndex === -1) {
+            return res.status(404).json({ error: 'Feed not found' });
+        }
+
+        data.feeds.splice(feedIndex, 1);
+        
+        // Delete the storage file for this feed
+        deleteFeedStorage(id);
+
+        if (writeMainConfig(data)) {
+            res.status(204).send();
+        } else {
+            res.status(500).json({ error: 'Failed to delete feed' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete feed' });
+    }
+});
+
+// POST update all feeds (used for batch updates like mark all as read)
+app.post('/api/feeds/update-all', (req, res) => {
+    try {
+        const { feeds } = req.body;
+        const data = readFeeds();
+        data.feeds = feeds;
+
+        if (writeFeeds(data)) {
+            res.json(feeds);
+        } else {
+            res.status(500).json({ error: 'Failed to update feeds' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update feeds' });
+    }
+});
+
+// Proxy endpoint to bypass CORS
+app.get('/api/proxy', async (req, res) => {
+    const { url } = req.query;
+    if (!url) {
+        return res.status(400).json({ error: 'URL is required' });
+    }
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            return res.status(response.status).send(`Failed to fetch: ${response.statusText}`);
+        }
+        const contentType = response.headers.get('content-type');
+        const text = await response.text();
+        
+        res.set('Content-Type', contentType || 'application/xml');
+        res.send(text);
+    } catch (error) {
+        console.error('Proxy error:', error);
+        res.status(500).json({ error: 'Failed to fetch URL' });
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`🚀 RSS Reader Backend running on http://localhost:${PORT}`);
+});
