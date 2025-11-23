@@ -76,12 +76,72 @@ export function WaterfallView({ feeds }) {
       }
 
       let nextIndex = focusedIndex;
+      const currentEl = document.getElementById(`card-${focusedIndex}`);
+      const currentRect = currentEl?.getBoundingClientRect();
+      const currentCol = focusedIndex % numColumns;
+
       switch (e.key) {
         case 'ArrowRight':
-          nextIndex = focusedIndex + 1;
+          if (currentRect && currentCol < numColumns - 1) {
+            const targetCol = currentCol + 1;
+            let closestIdx = -1;
+            let minDiff = Infinity;
+            const currentCenterY = currentRect.top + currentRect.height / 2;
+            
+            // Optimize: Only search nearby items instead of full column scan
+            const searchRadius = 10; // Check 10 rows above and below
+            const currentRow = Math.floor(focusedIndex / numColumns);
+            const minRow = Math.max(0, currentRow - searchRadius);
+            const maxRow = currentRow + searchRadius;
+
+            for (let r = minRow; r <= maxRow; r++) {
+              const i = r * numColumns + targetCol;
+              if (i >= 0 && i < allItems.length) {
+                const el = document.getElementById(`card-${i}`);
+                if (el) {
+                  const rect = el.getBoundingClientRect();
+                  const centerY = rect.top + rect.height / 2;
+                  const diff = Math.abs(centerY - currentCenterY);
+                  if (diff < minDiff) {
+                    minDiff = diff;
+                    closestIdx = i;
+                  }
+                }
+              }
+            }
+            if (closestIdx !== -1) nextIndex = closestIdx;
+          }
           break;
         case 'ArrowLeft':
-          nextIndex = focusedIndex - 1;
+          if (currentRect && currentCol > 0) {
+            const targetCol = currentCol - 1;
+            let closestIdx = -1;
+            let minDiff = Infinity;
+            const currentCenterY = currentRect.top + currentRect.height / 2;
+
+            // Optimize: Only search nearby items instead of full column scan
+            const searchRadius = 10; // Check 10 rows above and below
+            const currentRow = Math.floor(focusedIndex / numColumns);
+            const minRow = Math.max(0, currentRow - searchRadius);
+            const maxRow = currentRow + searchRadius;
+
+            for (let r = minRow; r <= maxRow; r++) {
+              const i = r * numColumns + targetCol;
+              if (i >= 0 && i < allItems.length) {
+                const el = document.getElementById(`card-${i}`);
+                if (el) {
+                  const rect = el.getBoundingClientRect();
+                  const centerY = rect.top + rect.height / 2;
+                  const diff = Math.abs(centerY - currentCenterY);
+                  if (diff < minDiff) {
+                    minDiff = diff;
+                    closestIdx = i;
+                  }
+                }
+              }
+            }
+            if (closestIdx !== -1) nextIndex = closestIdx;
+          }
           break;
         case 'ArrowDown':
           nextIndex = focusedIndex + numColumns;
@@ -105,7 +165,7 @@ export function WaterfallView({ feeds }) {
           return;
       }
 
-      if (nextIndex >= 0 && nextIndex < allItems.length) {
+      if (nextIndex !== focusedIndex && nextIndex >= 0 && nextIndex < allItems.length) {
         e.preventDefault();
         setIsKeyboardMode(true);
         setFocusedIndex(nextIndex);
