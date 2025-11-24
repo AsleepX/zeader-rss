@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Clock, ChevronLeft, Play, Share2, Globe } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useFeedStore } from '../store/useFeedStore';
 
 // Helper to extract the first image from HTML content
 const extractImage = (html) => {
@@ -31,7 +32,7 @@ const estimateReadTime = (text) => {
   return `${minutes || 1} min`;
 };
 
-function ArticleList({ articles, onSelectArticle, initialSelectedId }) {
+function ArticleList({ articles, onSelectArticle, initialSelectedId, onMarkAsRead }) {
   const initialIndex = initialSelectedId ? articles.findIndex(a => a.id === initialSelectedId) : -1;
   const [selectedIndex, setSelectedIndex] = useState(initialIndex);
   const itemRefs = useRef([]);
@@ -86,12 +87,21 @@ function ArticleList({ articles, onSelectArticle, initialSelectedId }) {
       } else if (e.key === 'Enter' && selectedIndex >= 0) {
         e.preventDefault();
         onSelectArticle(articles[selectedIndex]);
+      } else if (e.code === 'Space' && selectedIndex >= 0) {
+        e.preventDefault();
+        if (onMarkAsRead) {
+          onMarkAsRead(articles[selectedIndex]);
+        }
+        setSelectedIndex(prev => {
+          const next = prev + 1;
+          return next < articles.length ? next : prev;
+        });
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [articles, selectedIndex, onSelectArticle]);
+  }, [articles, selectedIndex, onSelectArticle, onMarkAsRead]);
 
   useEffect(() => {
     if (selectedIndex >= 0 && itemRefs.current[selectedIndex]) {
@@ -146,7 +156,8 @@ function ArticleList({ articles, onSelectArticle, initialSelectedId }) {
             {/* Content */}
             <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
               <div>
-                <h3 className="font-bold text-gray-900 text-lg leading-tight mb-1 truncate pr-4">
+                <h3 className={`font-bold text-lg leading-tight mb-1 truncate pr-4 ${!article.read ? 'text-black' : 'text-gray-500'}`}>
+                  {!article.read && <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2 align-middle"></span>}
                   {article.title}
                 </h3>
                 <p className="text-gray-500 text-sm line-clamp-2 leading-relaxed">
@@ -298,13 +309,15 @@ function ArticleDetail({ article, onBack }) {
 }
 
 export function ArticleView({ feeds }) {
+  const { markItemAsRead, showUnreadOnly } = useFeedStore();
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [hasNavigated, setHasNavigated] = useState(false);
   const [lastSelectedId, setLastSelectedId] = useState(null);
 
   const allItems = feeds.flatMap(feed =>
-    feed.items.map(item => ({ ...item, feedTitle: feed.title }))
-  ).sort((a, b) => {
+    feed.items.map(item => ({ ...item, feedTitle: feed.title, feedId: feed.id }))
+  ).filter(item => !showUnreadOnly || !item.read)
+  .sort((a, b) => {
     const dateA = new Date(a.isoDate || a.pubDate);
     const dateB = new Date(b.isoDate || b.pubDate);
     if (isNaN(dateA.getTime())) return 1;
@@ -348,10 +361,18 @@ export function ArticleView({ feeds }) {
           <ArticleList 
             articles={allItems} 
             initialSelectedId={lastSelectedId}
+            onMarkAsRead={(article) => {
+              if (!article.read) {
+                markItemAsRead(article.feedId, article.id);
+              }
+            }}
             onSelectArticle={(article) => {
               setHasNavigated(true);
               setSelectedArticle(article);
               setLastSelectedId(article.id);
+              if (!article.read) {
+                markItemAsRead(article.feedId, article.id);
+              }
             }} 
           />
         </motion.div>

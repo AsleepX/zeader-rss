@@ -9,6 +9,9 @@ export const useFeedStore = create((set, get) => ({
     isLoading: false,
     error: null,
     selectedSource: { type: 'all', id: null }, // 'all', 'folder', 'feed'
+    showUnreadOnly: false,
+
+    toggleShowUnreadOnly: () => set(state => ({ showUnreadOnly: !state.showUnreadOnly })),
 
     selectSource: (type, id = null) => {
         set({ selectedSource: { type, id } });
@@ -331,14 +334,25 @@ export const useFeedStore = create((set, get) => ({
             feeds.map(async (feed) => {
                 try {
                     const feedData = await fetchFeed(feed.url);
+                    
+                    // Create a map of existing items for quick lookup
+                    const existingItemsMap = new Map(
+                        feed.items?.map(item => [item.id, item]) || []
+                    );
+
                     return {
                         ...feed,
-                        items: feedData.items.map(item => ({
-                            ...item,
-                            id: item.guid || item.link || uuidv4(),
-                            read: false, // Logic to keep read status needed later
-                            feedId: feed.id
-                        })),
+                        items: feedData.items.map(item => {
+                            const id = item.guid || item.link || uuidv4();
+                            const existingItem = existingItemsMap.get(id);
+                            
+                            return {
+                                ...item,
+                                id,
+                                read: existingItem ? existingItem.read : false,
+                                feedId: feed.id
+                            };
+                        }),
                         lastUpdated: new Date().toISOString(),
                     };
                 } catch (e) {
@@ -355,6 +369,60 @@ export const useFeedStore = create((set, get) => ({
         } catch (error) {
             console.error('Failed to save refreshed feeds:', error);
             set({ feeds: updatedFeeds, isLoading: false });
+        }
+    },
+
+    markItemAsRead: async (feedId, itemId) => {
+        const { feeds } = get();
+        const updatedFeeds = feeds.map(feed => {
+            if (feed.id === feedId) {
+                return {
+                    ...feed,
+                    items: feed.items.map(item => 
+                        item.id === itemId ? { ...item, read: true } : item
+                    )
+                };
+            }
+            return feed;
+        });
+
+        set({ feeds: updatedFeeds });
+        
+        // Optimistically update backend
+        try {
+            const feedToUpdate = updatedFeeds.find(f => f.id === feedId);
+            if (feedToUpdate) {
+                await api.updateFeed(feedId, feedToUpdate);
+            }
+        } catch (error) {
+            console.error('Failed to mark item as read:', error);
+            // Revert on error? For now, just log it.
+        }
+    },
+
+    markItemAsUnread: async (feedId, itemId) => {
+        const { feeds } = get();
+        const updatedFeeds = feeds.map(feed => {
+            if (feed.id === feedId) {
+                return {
+                    ...feed,
+                    items: feed.items.map(item => 
+                        item.id === itemId ? { ...item, read: false } : item
+                    )
+                };
+            }
+            return feed;
+        });
+
+        set({ feeds: updatedFeeds });
+        
+        try {
+            const feedToUpdate = updatedFeeds.find(f => f.id === feedId);
+            if (feedToUpdate) {
+                await api.updateFeed(feedId, feedToUpdate);
+            }
+        } catch (error) {
+            console.error('Failed to mark item as unread:', error);
         }
     },
 
@@ -398,6 +466,64 @@ export const useFeedStore = create((set, get) => ({
                 folders: previousFolders,
                 error: 'Failed to update folder view type' 
             });
+        }
+    },
+
+    markCurrentViewAsRead: async () => {
+        const { selectedSource, feeds } = get();
+        let updatedFeeds = [...feeds];
+        let hasChanges = false;
+
+        if (selectedSource.type === 'all') {
+            updatedFeeds = updatedFeeds.map(feed => {
+                const hasUnread = feed.items.some(item => !item.read);
+                if (hasUnread) {
+                    hasChanges = true;
+                    return {
+                        ...feed,
+                        items: feed.items.map(item => ({ ...item, read: true }))
+                    };
+                }
+                return feed;
+            });
+        } else if (selectedSource.type === 'folder') {
+            updatedFeeds = updatedFeeds.map(feed => {
+                if (feed.folderId === selectedSource.id) {
+                    const hasUnread = feed.items.some(item => !item.read);
+                    if (hasUnread) {
+                        hasChanges = true;
+                        return {
+                            ...feed,
+                            items: feed.items.map(item => ({ ...item, read: true }))
+                        };
+                    }
+                }
+                return feed;
+            });
+        } else if (selectedSource.type === 'feed') {
+            updatedFeeds = updatedFeeds.map(feed => {
+                if (feed.id === selectedSource.id) {
+                    const hasUnread = feed.items.some(item => !item.read);
+                    if (hasUnread) {
+                        hasChanges = true;
+                        return {
+                            ...feed,
+                            items: feed.items.map(item => ({ ...item, read: true }))
+                        };
+                    }
+                }
+                return feed;
+            });
+        }
+
+        if (!hasChanges) return;
+
+        try {
+            set({ feeds: updatedFeeds });
+            await api.updateAllFeeds(updatedFeeds);
+        } catch (error) {
+            console.error('Failed to mark view as read:', error);
+            // Revert logic could be added here
         }
     },
 

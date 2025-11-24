@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Grid, Plus, Trash2, Rss, Image, BookOpen, Settings, Folder, FolderOpen, ChevronRight, ChevronDown, MoreVertical, Upload, RefreshCw, Download, Edit } from 'lucide-react';
+import { Layout, Grid, Plus, Trash2, Rss, Image, BookOpen, Settings, Folder, FolderOpen, ChevronRight, ChevronDown, MoreVertical, Upload, RefreshCw, Download, Edit, Check, Circle } from 'lucide-react';
 import { useFeedStore } from '../store/useFeedStore';
 import { useThemeStore } from '../store/useThemeStore';
 import clsx from 'clsx';
@@ -186,7 +186,7 @@ const FeedList = ({ items, onRemove, selectedSource, onSelectFeed, onContextMenu
 );
 
 export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder, onImportOpml }) {
-  const { feeds, folders, removeFeed, deleteFolder, moveFeed, updateFeedViewType, updateFolderViewType, selectedSource, selectSource, refreshAllFeeds, isLoading, renameFolder, renameFeed } = useFeedStore();
+  const { feeds, folders, removeFeed, deleteFolder, moveFeed, updateFeedViewType, updateFolderViewType, selectedSource, selectSource, refreshAllFeeds, isLoading, renameFolder, renameFeed, showUnreadOnly, toggleShowUnreadOnly, markCurrentViewAsRead } = useFeedStore();
   const { themeColor, setThemeColor } = useThemeStore();
   const [expandedFolders, setExpandedFolders] = useState({});
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -441,20 +441,38 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
     <div className="w-[280px] h-screen bg-white border-r border-gray-100 flex flex-col flex-shrink-0 font-sans relative">
       <div className="p-6 pb-4">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-extrabold text-gray-900 flex items-center gap-2 tracking-tight">
+          <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2 tracking-tight">
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white">
               <Rss className="w-5 h-5" />
             </div>
             Zeader
           </h1>
-          <button
-            onClick={refreshAllFeeds}
-            disabled={isLoading}
-            className={`p-2 text-gray-400 hover:text-primary-600 rounded-full hover:bg-primary-50 transition-all ${isLoading ? 'animate-spin' : ''}`}
-            title="Refresh Feeds"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggleShowUnreadOnly}
+              className={`p-2 rounded-full transition-all ${showUnreadOnly ? 'text-primary-600 bg-primary-50' : 'text-gray-400 hover:text-primary-600 hover:bg-primary-50'}`}
+              title={showUnreadOnly ? "Show All" : "Show Unread Only"}
+            >
+              <Circle className={`w-4 h-4 ${showUnreadOnly ? 'fill-current' : ''}`} />
+            </button>
+            <button
+              onClick={markCurrentViewAsRead}
+              className="p-2 text-gray-400 hover:text-primary-600 rounded-full hover:bg-primary-50 transition-all group"
+              title="Mark View as Read"
+            >
+              <div className="w-4 h-4 rounded-full border-[1.5px] border-current flex items-center justify-center">
+                <Check className="w-2.5 h-2.5" strokeWidth={3} />
+              </div>
+            </button>
+            <button
+              onClick={refreshAllFeeds}
+              disabled={isLoading}
+              className={`p-2 text-gray-400 hover:text-primary-600 rounded-full hover:bg-primary-50 transition-all ${isLoading ? 'animate-spin' : ''}`}
+              title="Refresh Feeds"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider truncate px-1">
           {pageTitle}

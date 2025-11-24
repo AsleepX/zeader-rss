@@ -3,6 +3,7 @@ import { MoreHorizontal, Copy, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FeedDetailModal } from './FeedDetailModal';
+import { useFeedStore } from '../store/useFeedStore';
 
 export function WaterfallView({ feeds }) {
   const [selectedItem, setSelectedItem] = useState(null);
@@ -10,6 +11,7 @@ export function WaterfallView({ feeds }) {
   const [copiedId, setCopiedId] = useState(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [isKeyboardMode, setIsKeyboardMode] = useState(false);
+  const { markItemAsRead, showUnreadOnly } = useFeedStore();
 
   useEffect(() => {
     const handleMouseMove = () => {
@@ -22,6 +24,7 @@ export function WaterfallView({ feeds }) {
   const allItems = useMemo(() => feeds.flatMap(feed =>
     feed.items.map(item => ({ ...item, feedTitle: feed.title, feedUrl: feed.url }))
   ).filter(item => {
+    if (showUnreadOnly && item.read) return false;
     // Filter out future items
     const date = new Date(item.isoDate || item.pubDate);
     if (isNaN(date.getTime())) return true;
@@ -32,7 +35,19 @@ export function WaterfallView({ feeds }) {
     if (isNaN(dateA.getTime())) return 1;
     if (isNaN(dateB.getTime())) return -1;
     return dateB - dateA;
-  }), [feeds]);
+  }), [feeds, showUnreadOnly]);
+
+  useEffect(() => {
+    if (focusedIndex >= 0 && focusedIndex < allItems.length) {
+      const item = allItems[focusedIndex];
+      if (!item.read) {
+        const timer = setTimeout(() => {
+          markItemAsRead(item.feedId, item.id);
+        }, 0);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [focusedIndex, allItems, markItemAsRead]);
 
   const getNumColumns = () => {
     if (typeof window === 'undefined') return 1;
@@ -229,7 +244,17 @@ export function WaterfallView({ feeds }) {
     if (!imgMatch) {
       imgMatch = description?.match(/<img[^>]+src=["']([^"']+)["']/);
     }
-    return imgMatch ? imgMatch[1] : null;
+    if (imgMatch) return imgMatch[1];
+
+    // YouTube thumbnail fallback
+    if (item.link && (item.link.includes('youtube.com') || item.link.includes('youtu.be'))) {
+      const videoIdMatch = item.link.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([\w-]+)/);
+      if (videoIdMatch) {
+        return `https://i.ytimg.com/vi/${videoIdMatch[1]}/hqdefault.jpg`;
+      }
+    }
+
+    return null;
   };
 
   const extractJavId = (item) => {

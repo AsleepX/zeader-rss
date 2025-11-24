@@ -63,13 +63,21 @@ export const fetchFeed = async (url) => {
  */
 export const getEmbedUrl = (pageUrl) => {
     try {
-        // Extract viewkey from URL like: https://www.pornhub.com/view
+        // Pornhub
         const viewkeyMatch = pageUrl.match(/viewkey=([a-zA-Z0-9]+)/);
         if (viewkeyMatch) {
             const viewkey = viewkeyMatch[1];
             // Construct embed URL
             return `https://www.pornhub.com/embed/${viewkey}`;
         }
+
+        // YouTube
+        const youtubeMatch = pageUrl.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([\w-]+)/);
+        if (youtubeMatch) {
+            const videoId = youtubeMatch[1];
+            return `https://www.youtube.com/embed/${videoId}`;
+        }
+
         return null;
     } catch (e) {
         console.error('Error constructing embed URL:', e);

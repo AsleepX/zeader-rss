@@ -60,7 +60,13 @@ export function FeedDetailModal({ item, onClose, originRect }) {
     };
 
     // Calculate initial position based on originRect
-    const initialVariants = originRect ? {
+    const isValidRect = originRect && 
+        typeof originRect.left === 'number' && 
+        typeof originRect.top === 'number' && 
+        typeof originRect.width === 'number' && 
+        typeof originRect.height === 'number';
+
+    const initialVariants = isValidRect ? {
         initial: {
             opacity: 0,
             scale: 0.5,
