@@ -38,6 +38,7 @@ Master these shortcuts to navigate Zeader like a pro:
 | :--- | :--- |
 | `↑` / `↓` | Navigate through the article list |
 | `Enter` | Open the selected article |
+| `Space` | Mark current as read and move to next |
 
 ### Waterfall View
 | Key | Action |
