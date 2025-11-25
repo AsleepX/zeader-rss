@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -50,19 +51,32 @@ const authMiddleware = (req, res, next) => {
 
 // Login Route
 app.post('/api/login', (req, res) => {
-    const { password } = req.body;
-    const serverPassword = process.env.PASSWORD;
+    try {
+        console.log('Login attempt received');
+        console.log('Body:', req.body);
 
-    if (!serverPassword) {
-        // If no password configured, login is always successful (or unnecessary)
-        return res.json({ token: 'nopassword' });
-    }
+        const { password } = req.body || {};
+        const serverPassword = process.env.PASSWORD;
 
-    if (password === serverPassword) {
-        const token = Buffer.from(password).toString('base64');
-        res.json({ token });
-    } else {
-        res.status(401).json({ error: 'Invalid password' });
+        console.log('Server password configured:', !!serverPassword);
+
+        if (!serverPassword) {
+            return res.json({ token: 'nopassword' });
+        }
+
+        if (!password) {
+            return res.status(400).json({ error: 'Password is required' });
+        }
+
+        if (password === serverPassword) {
+            const token = Buffer.from(password).toString('base64');
+            res.json({ token });
+        } else {
+            res.status(401).json({ error: 'Invalid password' });
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

@@ -25,3 +25,6 @@ data/
 *.njsproj
 *.sln
 *.sw?
+
+# env
+.env
