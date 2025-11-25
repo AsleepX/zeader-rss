@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FeedDetailModal } from './FeedDetailModal';
 import { useFeedStore } from '../store/useFeedStore';
+import { useAIStore } from '../store/useAIStore';
 
 export function WaterfallView({ feeds }) {
   const [selectedItem, setSelectedItem] = useState(null);
@@ -115,7 +116,7 @@ export function WaterfallView({ feeds }) {
             let closestIdx = -1;
             let minDiff = Infinity;
             const currentCenterY = currentRect.top + currentRect.height / 2;
-            
+
             // Optimize: Only search nearby items instead of full column scan
             const searchRadius = 10; // Check 10 rows above and below
             const currentRow = Math.floor(focusedIndex / numColumns);
@@ -181,22 +182,22 @@ export function WaterfallView({ feeds }) {
           e.preventDefault();
           const item = allItems[focusedIndex];
           if (item) {
-             if (!item.read) {
-               if (showUnreadOnly) {
-                 setTempReadIds(prev => {
-                   const next = new Set(prev);
-                   next.add(item.id);
-                   return next;
-                 });
-               }
-               markItemAsRead(item.feedId, item.id);
-             }
-             const el = document.getElementById(`card-${focusedIndex}`);
-             if (el) {
-               const rect = el.getBoundingClientRect();
-               setOriginRect(rect);
-               setSelectedItem(item);
-             }
+            if (!item.read) {
+              if (showUnreadOnly) {
+                setTempReadIds(prev => {
+                  const next = new Set(prev);
+                  next.add(item.id);
+                  return next;
+                });
+              }
+              markItemAsRead(item.feedId, item.id);
+            }
+            const el = document.getElementById(`card-${focusedIndex}`);
+            if (el) {
+              const rect = el.getBoundingClientRect();
+              setOriginRect(rect);
+              setSelectedItem(item);
+            }
           }
           return;
         default:
@@ -286,7 +287,7 @@ export function WaterfallView({ feeds }) {
     const div = document.createElement('div');
     div.innerHTML = htmlContent;
     const textContent = div.textContent || div.innerText || '';
-    
+
     // Look for "ID: XXXXX" pattern in text content
     // The text content usually looks like "ID: GQN-007 Released Date: ..."
     // Using a more flexible regex to catch ID followed by whitespace or end of line
@@ -297,7 +298,7 @@ export function WaterfallView({ feeds }) {
     // Matches patterns like "ABC-123" at the start of the title
     const titleMatch = item.title?.match(/^([A-Za-z0-9]+-[0-9]+)/);
     if (titleMatch) return titleMatch[1];
-    
+
     return null;
   };
 
@@ -307,6 +308,8 @@ export function WaterfallView({ feeds }) {
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
+
+
 
   return (
     <div className="p-6 bg-gray-50 min-h-full">
@@ -344,32 +347,28 @@ export function WaterfallView({ feeds }) {
                       setFocusedIndex(item.globalIndex);
                     }
                   }}
-                  className={`bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 group cursor-pointer ${
-                    item.globalIndex === 0 ? 'scroll-mb-24' : item.globalIndex === allItems.length - 1 ? 'scroll-mt-24' : 'scroll-my-24'
-                  } ${isFocused && isKeyboardMode ? 'ring-2 ring-primary-500' : ''}`}
+                  className={`bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 group cursor-pointer ${item.globalIndex === 0 ? 'scroll-mb-24' : item.globalIndex === allItems.length - 1 ? 'scroll-mt-24' : 'scroll-my-24'
+                    } ${isFocused && isKeyboardMode ? 'ring-2 ring-primary-500' : ''}`}
                 >
                   {image && (
                     <div className="relative aspect-auto overflow-hidden">
                       <img
                         src={image}
                         alt={item.title}
-                        className={`w-full h-auto object-cover transition-transform duration-700 ${
-                          isFocused ? 'scale-105' : ''
-                        }`}
+                        className={`w-full h-auto object-cover transition-transform duration-700 ${isFocused ? 'scale-105' : ''
+                          }`}
                         loading="lazy"
                         referrerPolicy="no-referrer"
                         onError={(e) => e.target.style.display = 'none'}
                       />
-                      <div className={`absolute inset-0 bg-gradient-to-t from-black/20 to-transparent transition-opacity duration-300 ${
-                        isFocused ? 'opacity-100' : 'opacity-0'
-                      }`} />
+                      <div className={`absolute inset-0 bg-gradient-to-t from-black/20 to-transparent transition-opacity duration-300 ${isFocused ? 'opacity-100' : 'opacity-0'
+                        }`} />
                     </div>
                   )}
 
                   <div className="p-3">
-                    <h3 className={`font-bold text-gray-900 mb-1.5 leading-snug text-sm line-clamp-2 transition-colors ${
-                      isFocused ? 'text-primary-600' : ''
-                    }`}>
+                    <h3 className={`font-bold text-gray-900 mb-1.5 leading-snug text-sm line-clamp-2 transition-colors ${isFocused ? 'text-primary-600' : ''
+                      }`}>
                       {item.title}
                     </h3>
 

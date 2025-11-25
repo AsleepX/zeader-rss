@@ -3,6 +3,7 @@ import { Clock, ChevronLeft, Play, Share2, Globe } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFeedStore } from '../store/useFeedStore';
+import { useAIStore } from '../store/useAIStore';
 
 // Helper to extract the first image from HTML content
 const extractImage = (html) => {
@@ -198,6 +199,10 @@ function ArticleList({ articles, onSelectArticle, initialSelectedId, onMarkAsRea
     </div>
   );
 }
+
+const MemoizedContentBlock = React.memo(({ html }) => (
+  <div dangerouslySetInnerHTML={{ __html: html }} />
+));
 
 function ArticleDetail({ article, onBack }) {
   const { feeds } = useFeedStore();
@@ -455,8 +460,9 @@ function ArticleDetail({ article, onBack }) {
                   ? 'border-l-4 border-[#76B2ED] pl-6 -ml-6'
                   : 'border-l-4 border-transparent pl-6 -ml-6'
                   }`}
-                dangerouslySetInnerHTML={{ __html: block.html }}
-              />
+              >
+                <MemoizedContentBlock html={block.html} />
+              </div>
             ))
           ) : (
             <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
@@ -495,6 +501,36 @@ export function ArticleView({ feeds }) {
       if (isNaN(dateB.getTime())) return -1;
       return dateB - dateA;
     });
+
+  // AI Context Logic
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore if user is typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+      if (e.key.toLowerCase() === 'z') {
+        // Only allow in Article Detail View
+        if (!selectedArticle) return;
+
+        e.preventDefault();
+        const selection = window.getSelection().toString().trim();
+
+        if (selection) {
+          // 1. Text Selection Context
+          useAIStore.getState().openAIModal(`Explain or summarize this text:\n\n"${selection}"`);
+        } else {
+          // 2. Article Detail Context
+          const content = selectedArticle.content || selectedArticle.contentSnippet || '';
+          // Truncate content if too long (simple check, can be improved)
+          const truncatedContent = content.length > 5000 ? content.slice(0, 5000) + '...' : content;
+          useAIStore.getState().openAIModal(`Analyze this article:\n\nTitle: ${selectedArticle.title}\n\nContent: ${truncatedContent}`);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedArticle, lastSelectedId, allItems]);
 
   if (allItems.length === 0) {
     return (

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Grid, Plus, Trash2, Rss, Image, BookOpen, Settings, Folder, FolderOpen, MoreVertical, Upload, RefreshCw, Download, Edit, Check, Circle } from 'lucide-react';
+import { Layout, Grid, Plus, Trash2, Rss, Image, BookOpen, Settings, Folder, FolderOpen, MoreVertical, Upload, RefreshCw, Download, Edit, Check, Circle, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFeedStore } from '../store/useFeedStore';
 import { useThemeStore } from '../store/useThemeStore';
+import { useAIStore } from '../store/useAIStore';
 import clsx from 'clsx';
 import { DndContext, useDraggable, useDroppable, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -582,6 +583,17 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
                   >
                     <Trash2 className="w-4 h-4" />
                     Clean Up
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      useAIStore.getState().openAISettings();
+                      setIsSettingsOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left text-sm font-medium text-gray-700 transition-colors border-t border-gray-50"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Configure Z's Soul
                   </button>
 
                   {/* Theme Color Picker */}

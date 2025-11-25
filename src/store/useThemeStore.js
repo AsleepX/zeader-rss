@@ -5,7 +5,7 @@ import { generatePalette } from '../utils/colorUtils';
 export const useThemeStore = create(
   persist(
     (set, get) => ({
-      themeColor: '#4f46e5', // Default Indigo-600
+      themeColor: '#1d7d8c',
       setThemeColor: (color) => {
         set({ themeColor: color });
         get().applyTheme();

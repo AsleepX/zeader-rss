@@ -6,6 +6,8 @@ import { WaterfallView } from './components/WaterfallView';
 import { AddFeedModal } from './components/AddFeedModal';
 import { CreateFolderModal } from './components/CreateFolderModal';
 import { ImportOpmlModal } from './components/ImportOpmlModal';
+import { AIResultModal } from './components/AIResultModal';
+import { AISettingsModal } from './components/AISettingsModal';
 import { useFeedStore } from './store/useFeedStore';
 import { useThemeStore } from './store/useThemeStore';
 
@@ -125,6 +127,9 @@ function App() {
         isOpen={isImportOpmlModalOpen}
         onClose={() => setIsImportOpmlModalOpen(false)}
       />
+
+      <AIResultModal />
+      <AISettingsModal />
     </div>
   );
 }
