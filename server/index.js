@@ -10,6 +10,7 @@ import {
     deleteFeedStorage,
     cleanupOldItems
 } from './utils/fileStorage.js';
+import { refreshAllFeeds } from './utils/rssFetcher.js';
 
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
@@ -294,6 +295,14 @@ app.use((req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
+const REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes
+
 app.listen(PORT, () => {
     console.log(`🚀 RSS Reader Backend running on http://localhost:${PORT}`);
+
+    // Initial refresh on startup
+    refreshAllFeeds();
+
+    // Schedule periodic refresh
+    setInterval(refreshAllFeeds, REFRESH_INTERVAL);
 });
