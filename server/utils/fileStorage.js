@@ -33,16 +33,16 @@ function ensureDirectories() {
 // Initialize and Migrate Data
 function initializeData() {
     ensureDirectories();
-    
+
     // Check if we need to migrate from old single-file format
     if (fs.existsSync(DATA_FILE)) {
         try {
             const rawData = fs.readFileSync(DATA_FILE, 'utf-8');
             const data = JSON.parse(rawData);
-            
+
             // Check if migration is needed (if feeds have items inline)
             const needsMigration = data.feeds && data.feeds.some(f => f.items && f.items.length > 0);
-            
+
             if (needsMigration) {
                 console.log('Migrating data to split storage format...');
                 writeFeeds(data); // This will trigger the split write logic
@@ -68,7 +68,7 @@ export function readFeeds() {
         initializeData();
         const rawData = fs.readFileSync(DATA_FILE, 'utf-8');
         const data = JSON.parse(rawData);
-        
+
         // Hydrate feeds with items from storage
         if (data.feeds) {
             data.feeds = data.feeds.map(feed => {
@@ -88,7 +88,7 @@ export function readFeeds() {
                 return { ...feed, items };
             });
         }
-        
+
         return data;
     } catch (error) {
         console.error('Error reading feeds:', error);
@@ -100,22 +100,22 @@ export function readFeeds() {
 export function writeFeeds(data) {
     try {
         ensureDirectories();
-        
+
         // 1. Prepare metadata (feeds without items)
         const feedsMetadata = data.feeds.map(feed => {
             const { items, ...meta } = feed;
             return meta;
         });
-        
+
         const mainData = {
             ...data,
             feeds: feedsMetadata,
             lastUpdated: new Date().toISOString()
         };
-        
+
         // 2. Write main config file
         fs.writeFileSync(DATA_FILE, JSON.stringify(mainData, null, 2), 'utf-8');
-        
+
         // 3. Write individual feed items
         data.feeds.forEach(feed => {
             if (feed.id) {
@@ -126,7 +126,7 @@ export function writeFeeds(data) {
                 fs.writeFileSync(feedFile, JSON.stringify(items, null, 2), 'utf-8');
             }
         });
-        
+
         return true;
     } catch (error) {
         console.error('Error writing feeds:', error);
@@ -138,18 +138,18 @@ export function writeFeeds(data) {
 export function writeMainConfig(data) {
     try {
         ensureDirectories();
-        
+
         const feedsMetadata = data.feeds.map(feed => {
             const { items, ...meta } = feed;
             return meta;
         });
-        
+
         const mainData = {
             ...data,
             feeds: feedsMetadata,
             lastUpdated: new Date().toISOString()
         };
-        
+
         fs.writeFileSync(DATA_FILE, JSON.stringify(mainData, null, 2), 'utf-8');
         return true;
     } catch (error) {
@@ -163,8 +163,55 @@ export function updateFeedItems(feedId, items) {
     try {
         ensureDirectories();
         const feedFile = path.join(STORAGE_DIR, `${feedId}.json`);
+
+        let existingItems = [];
+        if (fs.existsSync(feedFile)) {
+            try {
+                const fileContent = fs.readFileSync(feedFile, 'utf-8');
+                existingItems = JSON.parse(fileContent);
+            } catch (e) {
+                console.error(`Failed to read existing items for feed ${feedId}`, e);
+            }
+        }
+
+        // Merge logic:
+        // 1. Create a map of existing items by GUID or Link
+        const itemMap = new Map();
+
+        // Helper to get unique ID for an item
+        const getItemId = (item) => item.guid || item.link || item.title;
+
+        // Add existing items to map
+        existingItems.forEach(item => {
+            const id = getItemId(item);
+            if (id) itemMap.set(id, item);
+        });
+
+        // Add/Update with new items
+        items.forEach(item => {
+            const id = getItemId(item);
+            if (id) {
+                itemMap.set(id, item); // Overwrite with newer version
+            } else {
+                // If no ID, just add it (unlikely for valid RSS)
+                // But to be safe, maybe we shouldn't add it if we can't dedup?
+                // For now, let's assume valid RSS items have at least a link or title.
+            }
+        });
+
+        // Convert back to array
+        const mergedItems = Array.from(itemMap.values());
+
         // Filter old items before writing
-        const filteredItems = items.filter(shouldKeepItem);
+        const filteredItems = mergedItems.filter(shouldKeepItem);
+
+        // Sort by date (newest first)
+        filteredItems.sort((a, b) => {
+            const dateA = new Date(a.isoDate || a.pubDate || 0);
+            const dateB = new Date(b.isoDate || b.pubDate || 0);
+            return dateB - dateA;
+        });
+
         fs.writeFileSync(feedFile, JSON.stringify(filteredItems, null, 2), 'utf-8');
         return true;
     } catch (error) {
@@ -198,18 +245,18 @@ export function cleanupOldItems(daysToKeep = 30) {
 
         files.forEach(file => {
             if (!file.endsWith('.json')) return;
-            
+
             const filePath = path.join(STORAGE_DIR, file);
             try {
                 const content = fs.readFileSync(filePath, 'utf-8');
                 const items = JSON.parse(content);
-                
+
                 if (!Array.isArray(items)) return;
 
                 const initialCount = items.length;
                 const filteredItems = items.filter(item => {
                     let itemDate = item.isoDate ? new Date(item.isoDate) : (item.pubDate ? new Date(item.pubDate) : null);
-                    
+
                     // Check if date is valid
                     if (itemDate && isNaN(itemDate.getTime())) {
                         itemDate = null;
