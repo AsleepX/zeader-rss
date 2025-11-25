@@ -120,7 +120,7 @@ function ArticleList({ articles, onSelectArticle, initialSelectedId, onMarkAsRea
           opacity: highlightStyle.opacity,
         }}
       >
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-300" />
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#76B2ED]" />
       </div>
 
       {articles.map((article, index) => {
@@ -203,6 +203,13 @@ function ArticleDetail({ article, onBack }) {
   const { feeds } = useFeedStore();
   const [fullContent, setFullContent] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedBlockIndex, setSelectedBlockIndex] = useState(0);
+  const [contentBlocks, setContentBlocks] = useState([]);
+  const blockRefs = useRef([]);
+  const contentRef = useRef(null);
+  const isUserScrolling = useRef(false);
+  const scrollTimeout = useRef(null);
+  const shouldAutoScroll = useRef(false);
 
   const feed = feeds.find(f => f.id === article.feedId);
   const shouldLoadFullContent = feed?.loadFullContent;
@@ -236,15 +243,152 @@ function ArticleDetail({ article, onBack }) {
     return () => { isMounted = false; };
   }, [article.link, shouldLoadFullContent]);
 
+  // Parse content into blocks
+  useEffect(() => {
+    // If feed requires full content loading, wait for it
+    if (shouldLoadFullContent && !fullContent && isLoading) {
+      setContentBlocks([]);
+      return;
+    }
+
+    const contentToDisplay = fullContent || article.content || article.contentSnippet || '';
+    if (!contentToDisplay) {
+      setContentBlocks([]);
+      return;
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(contentToDisplay, 'text/html');
+    const blocks = [];
+
+    // Recursively extract meaningful content blocks
+    const processNode = (node) => {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const tagName = node.tagName.toLowerCase();
+
+        // These are actual content blocks - don't recurse into them
+        if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'blockquote', 'pre', 'figure', 'iframe'].includes(tagName)) {
+          // Skip empty paragraphs
+          if (tagName === 'p' && !node.textContent.trim() && !node.querySelector('img')) {
+            return;
+          }
+          blocks.push({
+            type: tagName,
+            html: node.outerHTML,
+            text: node.textContent
+          });
+        }
+        // Handle images separately as individual blocks
+        else if (tagName === 'img') {
+          blocks.push({
+            type: 'img',
+            html: node.outerHTML,
+            text: node.alt || ''
+          });
+        }
+        // For wrapper/container elements, recurse into children
+        else {
+          Array.from(node.childNodes).forEach(processNode);
+        }
+      }
+    };
+
+    Array.from(doc.body.childNodes).forEach(processNode);
+    setContentBlocks(blocks);
+    setSelectedBlockIndex(0);
+    blockRefs.current = [];
+  }, [fullContent, article.content, article.contentSnippet, shouldLoadFullContent, isLoading]);
+
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         onBack();
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        shouldAutoScroll.current = true;
+        setSelectedBlockIndex(prev => {
+          const next = Math.min(prev + 1, contentBlocks.length - 1);
+          return next;
+        });
+        isUserScrolling.current = false;
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        shouldAutoScroll.current = true;
+        setSelectedBlockIndex(prev => {
+          const next = Math.max(prev - 1, 0);
+          return next;
+        });
+        isUserScrolling.current = false;
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack]);
+  }, [onBack, contentBlocks.length]);
+
+  // Auto-scroll selected block to center
+  useEffect(() => {
+    if (!isUserScrolling.current && shouldAutoScroll.current && selectedBlockIndex >= 0 && blockRefs.current[selectedBlockIndex]) {
+      blockRefs.current[selectedBlockIndex].scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+      shouldAutoScroll.current = false;
+    }
+  }, [selectedBlockIndex]);
+
+  // Track user scrolling and update selection on stop
+  useEffect(() => {
+    const handleScroll = () => {
+      isUserScrolling.current = true;
+      shouldAutoScroll.current = false;
+
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+
+      scrollTimeout.current = setTimeout(() => {
+        isUserScrolling.current = false;
+
+        // Find the block closest to the center of the viewport
+        const viewportCenter = window.innerHeight / 2;
+        let minDistance = Infinity;
+        let closestIndex = -1;
+
+        blockRefs.current.forEach((block, index) => {
+          if (block) {
+            const rect = block.getBoundingClientRect();
+            const blockCenter = rect.top + rect.height / 2;
+            const distance = Math.abs(viewportCenter - blockCenter);
+
+            if (distance < minDistance) {
+              minDistance = distance;
+              closestIndex = index;
+            }
+          }
+        });
+
+        if (closestIndex !== -1) {
+          setSelectedBlockIndex(current => {
+            if (current !== closestIndex) return closestIndex;
+            return current;
+          });
+        }
+      }, 150);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll, { capture: true });
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+    };
+  }, []);
 
   const date = article.isoDate || article.pubDate ? new Date(article.isoDate || article.pubDate) : new Date();
   const contentToDisplay = fullContent || article.content || article.contentSnippet || '';
@@ -295,14 +439,28 @@ function ArticleDetail({ article, onBack }) {
         </header>
 
         {/* Article Content */}
-        <article className="prose prose-xl prose-slate max-w-none font-serif prose-headings:font-serif prose-a:text-primary-600 prose-img:rounded-xl [&_p]:text-[22px] [&_p]:leading-relaxed [&_li]:text-[22px] [&_iframe]:w-full [&_iframe]:!h-auto [&_iframe]:!aspect-[3/2] translate-x-[2%]">
+        <article ref={contentRef} className="prose prose-xl prose-slate max-w-none font-serif prose-headings:font-serif prose-a:text-primary-600 prose-img:rounded-xl [&_p]:text-[22px] [&_p]:leading-relaxed [&_li]:text-[22px] [&_iframe]:w-full [&_iframe]:!h-auto [&_iframe]:!aspect-[3/2] translate-x-[2%]">
           {isLoading && !fullContent && (
             <div className="flex items-center gap-2 text-sm text-gray-400 mb-4 animate-pulse">
               <div className="w-4 h-4 border-2 border-gray-200 border-t-primary-500 rounded-full animate-spin"></div>
               <span>Loading full content...</span>
             </div>
           )}
-          <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
+          {contentBlocks.length > 0 ? (
+            contentBlocks.map((block, index) => (
+              <div
+                key={index}
+                ref={el => blockRefs.current[index] = el}
+                className={`transition-all duration-200 ${index === selectedBlockIndex
+                  ? 'border-l-4 border-[#76B2ED] pl-6 -ml-6'
+                  : 'border-l-4 border-transparent pl-6 -ml-6'
+                  }`}
+                dangerouslySetInnerHTML={{ __html: block.html }}
+              />
+            ))
+          ) : (
+            <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
+          )}
         </article>
 
         {/* Footer */}
