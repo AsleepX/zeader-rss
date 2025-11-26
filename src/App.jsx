@@ -104,7 +104,7 @@ function App() {
         </div>
       </div>
 
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      <main className="flex-1 flex flex-col h-screen relative">
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="absolute top-4 left-4 z-50 p-2 text-gray-500 hover:bg-gray-100 bg-white/80 backdrop-blur-sm rounded-lg transition-all duration-300 border border-gray-200 opacity-0 hover:opacity-100"
@@ -112,7 +112,7 @@ function App() {
         >
           <PanelLeft className="w-5 h-5" />
         </button>
-        <div className="flex-1 h-full">
+        <div className="flex-1 h-full overflow-y-auto">
           {currentView === 'article' ? (
             <ArticleView feeds={currentFeeds} />
           ) : (
