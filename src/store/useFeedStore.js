@@ -6,30 +6,32 @@ import { api } from '../utils/api';
 const NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'; // Standard DNS namespace
 
 const generateItemId = (item, feedUrl) => {
-    // Prefer explicit unique identifiers
-    if (item.guid) return item.guid;
-    if (item.link) return item.link;
+    // 1. Try to use GUID if available and valid
+    if (item.guid) {
+        if (typeof item.guid === 'string') return item.guid;
+        if (typeof item.guid === 'object') {
+            // Handle object GUIDs (e.g. { _: 'id', $: {...} })
+            if (item.guid._) return item.guid._;
+            // Fallback for other object structures - stringify stable parts
+            return JSON.stringify(item.guid);
+        }
+    }
 
-    // Create a stable ID based on available content
-    // Include title, date, author, and content snippet for better uniqueness
+    // 2. Create a stable composite ID
+    // We do NOT use uuidv4() here because we want the ID to be deterministic (stable)
+    // so that refreshing the feed doesn't generate new IDs for the same items.
     const parts = [
+        item.link || '',
         item.title || '',
         item.isoDate || item.pubDate || '',
         item.author || '',
-        // Add a small snippet of content for additional uniqueness
-        (item.contentSnippet || item.content || '').slice(0, 100),
-        feedUrl || '', // Include feed URL as additional context
-        uuidv4() // Add a random component to guarantee uniqueness
+        feedUrl || ''
     ];
 
-    const payload = parts.filter(p => p).join('|');
+    const payload = parts.join('|');
 
-    if (payload) {
-        return uuidv5(payload, NAMESPACE);
-    }
-
-    // Last resort: random UUID
-    return uuidv4();
+    // Use UUID v5 (SHA-1 namespace hashing) for stability
+    return uuidv5(payload, NAMESPACE);
 };
 
 export const useFeedStore = create((set, get) => ({
