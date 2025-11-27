@@ -243,7 +243,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
       });
     };
 
-    const xmlHeader = '<?xml version="1.0" encoding="UTF-8"?>\n<opml version="1.0">\n<head>\n<title>Zeader Feeds Export</title>\n</head>\n<body>\n';
+    const xmlHeader = '<?xml version="1.0" encoding="UTF-8"?>\n<opml version="1.0" xmlns:zeader="http://zeader.com/spec">\n<head>\n<title>Zeader Feeds Export</title>\n</head>\n<body>\n';
     const xmlFooter = '</body>\n</opml>';
 
     let bodyContent = '';
@@ -251,19 +251,27 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
     // Process folders
     folders.forEach(folder => {
       const folderFeeds = feeds.filter(f => f.folderId === folder.id);
-      if (folderFeeds.length > 0) {
-        bodyContent += `  <outline text="${escapeXml(folder.name)}" title="${escapeXml(folder.name)}">\n`;
-        folderFeeds.forEach(feed => {
-          bodyContent += `    <outline type="rss" text="${escapeXml(feed.title)}" title="${escapeXml(feed.title)}" xmlUrl="${escapeXml(feed.url)}" htmlUrl=""/>\n`;
-        });
-        bodyContent += `  </outline>\n`;
-      }
+      // Always export folder if it exists, even if empty, to preserve structure
+      const viewTypeAttr = folder.viewType ? ` zeader:viewType="${escapeXml(folder.viewType)}"` : '';
+
+      bodyContent += `  <outline text="${escapeXml(folder.name)}" title="${escapeXml(folder.name)}"${viewTypeAttr}>\n`;
+
+      folderFeeds.forEach(feed => {
+        const feedViewTypeAttr = feed.viewType ? ` zeader:viewType="${escapeXml(feed.viewType)}"` : '';
+        const loadFullContentAttr = feed.loadFullContent !== undefined ? ` zeader:loadFullContent="${feed.loadFullContent}"` : '';
+
+        bodyContent += `    <outline type="rss" text="${escapeXml(feed.title)}" title="${escapeXml(feed.title)}" xmlUrl="${escapeXml(feed.url)}" htmlUrl=""${feedViewTypeAttr}${loadFullContentAttr}/>\n`;
+      });
+      bodyContent += `  </outline>\n`;
     });
 
     // Process ungrouped feeds
     const ungroupedFeeds = feeds.filter(f => !f.folderId);
     ungroupedFeeds.forEach(feed => {
-      bodyContent += `  <outline type="rss" text="${escapeXml(feed.title)}" title="${escapeXml(feed.title)}" xmlUrl="${escapeXml(feed.url)}" htmlUrl=""/>\n`;
+      const feedViewTypeAttr = feed.viewType ? ` zeader:viewType="${escapeXml(feed.viewType)}"` : '';
+      const loadFullContentAttr = feed.loadFullContent !== undefined ? ` zeader:loadFullContent="${feed.loadFullContent}"` : '';
+
+      bodyContent += `  <outline type="rss" text="${escapeXml(feed.title)}" title="${escapeXml(feed.title)}" xmlUrl="${escapeXml(feed.url)}" htmlUrl=""${feedViewTypeAttr}${loadFullContentAttr}/>\n`;
     });
 
     const opmlContent = xmlHeader + bodyContent + xmlFooter;

@@ -1,4 +1,4 @@
-import { getCategoryFromUrl } from './rss';
+
 
 export const parseOpml = async (file) => {
     return new Promise((resolve, reject) => {
@@ -8,22 +8,49 @@ export const parseOpml = async (file) => {
                 const text = e.target.result;
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(text, "text/xml");
-                
-                const outlines = xmlDoc.getElementsByTagName('outline');
-                const feeds = [];
 
-                for (let i = 0; i < outlines.length; i++) {
-                    const outline = outlines[i];
+                const body = xmlDoc.getElementsByTagName('body')[0];
+                if (!body) throw new Error("Invalid OPML: No body tag found");
+
+                const parseOutline = (outline) => {
+                    const type = outline.getAttribute('type');
+                    const text = outline.getAttribute('text');
+                    const title = outline.getAttribute('title');
                     const xmlUrl = outline.getAttribute('xmlUrl');
-                    if (xmlUrl) {
-                        feeds.push({
-                            title: outline.getAttribute('title') || outline.getAttribute('text') || xmlUrl,
+
+                    // Custom Zeader attributes
+                    const viewType = outline.getAttribute('zeader:viewType') || outline.getAttribute('viewType');
+                    const loadFullContent = outline.getAttribute('zeader:loadFullContent') || outline.getAttribute('loadFullContent');
+
+                    if (type === 'rss' || xmlUrl) {
+                        // It's a feed
+                        return {
+                            type: 'feed',
+                            title: title || text || xmlUrl,
                             url: xmlUrl,
-                            type: outline.getAttribute('type')
-                        });
+                            viewType: viewType || 'waterfall', // Default to waterfall if not specified
+                            loadFullContent: loadFullContent === 'true',
+                        };
+                    } else {
+                        // It's likely a folder/group
+                        const children = Array.from(outline.children)
+                            .filter(child => child.tagName === 'outline')
+                            .map(parseOutline);
+
+                        return {
+                            type: 'folder',
+                            name: text || title || 'Untitled Folder',
+                            viewType: viewType || null, // Folders might have a view type preference
+                            children: children
+                        };
                     }
-                }
-                resolve(feeds);
+                };
+
+                const rootOutlines = Array.from(body.children)
+                    .filter(node => node.tagName === 'outline')
+                    .map(parseOutline);
+
+                resolve(rootOutlines);
             } catch (error) {
                 reject(error);
             }
@@ -33,22 +60,15 @@ export const parseOpml = async (file) => {
     });
 };
 
-export const groupFeedsByCategory = (feeds) => {
-    const groups = {};
-    const ungrouped = [];
-
-    feeds.forEach(feed => {
-        const category = getCategoryFromUrl(feed.url);
-        if (category) {
-            const key = category.charAt(0).toUpperCase() + category.slice(1);
-            if (!groups[key]) {
-                groups[key] = [];
-            }
-            groups[key].push(feed);
-        } else {
-            ungrouped.push(feed);
+// Helper to flatten the tree if needed, or we can use the tree directly in the UI
+export const flattenFeeds = (nodes) => {
+    let feeds = [];
+    nodes.forEach(node => {
+        if (node.type === 'feed') {
+            feeds.push(node);
+        } else if (node.type === 'folder') {
+            feeds = feeds.concat(flattenFeeds(node.children));
         }
     });
-
-    return { groups, ungrouped };
+    return feeds;
 };

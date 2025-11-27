@@ -269,66 +269,60 @@ export const useFeedStore = create((set, get) => ({
         }
     },
 
-    importOpml: async (selectedGroups, selectedUngrouped) => {
+    importOpml: async (nodesToImport) => {
         set({ isLoading: true, error: null });
         try {
             const newFolders = [];
             const newFeeds = [];
             const { folders: currentFolders, feeds: currentFeeds } = get();
 
-            // 1. Handle Groups (Folders)
-            for (const [categoryName, feeds] of Object.entries(selectedGroups)) {
-                let folderId;
-                const existingFolder = currentFolders.find(f => f.name === categoryName) || newFolders.find(f => f.name === categoryName);
+            const processNode = (node, parentFolderId = undefined) => {
+                if (node.type === 'folder') {
+                    let folderId;
+                    // Check if folder exists by name (case-insensitive?) - for now exact match
+                    // Also check if we already created it in this batch
+                    const existingFolder = currentFolders.find(f => f.name === node.name) || newFolders.find(f => f.name === node.name);
 
-                if (existingFolder) {
-                    folderId = existingFolder.id;
-                } else {
-                    const newFolder = {
-                        id: uuidv4(),
-                        name: categoryName,
-                        createdAt: new Date().toISOString()
-                    };
-                    newFolders.push(newFolder);
-                    folderId = newFolder.id;
-                }
+                    if (existingFolder) {
+                        folderId = existingFolder.id;
+                        // Update viewType if specified and different? Maybe not for now to avoid overwriting user prefs on existing folders
+                    } else {
+                        const newFolder = {
+                            id: uuidv4(),
+                            name: node.name,
+                            viewType: node.viewType || null,
+                            createdAt: new Date().toISOString()
+                        };
+                        newFolders.push(newFolder);
+                        folderId = newFolder.id;
+                    }
 
-                feeds.forEach(feed => {
-                    // Check if feed already exists to avoid duplicates
-                    if (!currentFeeds.some(f => f.url === feed.url) && !newFeeds.some(f => f.url === feed.url)) {
+                    if (node.children) {
+                        node.children.forEach(child => processNode(child, folderId));
+                    }
+                } else if (node.type === 'feed') {
+                    // Check if feed already exists
+                    const isDuplicate = currentFeeds.some(f => f.url === node.url) || newFeeds.some(f => f.url === node.url);
+
+                    if (!isDuplicate) {
                         newFeeds.push({
                             id: uuidv4(),
-                            url: feed.url,
-                            title: feed.title || feed.url,
+                            url: node.url,
+                            title: node.title || node.url,
                             description: '',
-                            viewType: 'waterfall',
-                            folderId: folderId,
-                            loadFullContent: true, // Default to true
+                            viewType: node.viewType || 'waterfall',
+                            folderId: parentFolderId,
+                            loadFullContent: node.loadFullContent !== undefined ? node.loadFullContent : true,
                             items: [],
                             lastUpdated: new Date().toISOString()
                         });
                     }
-                });
-            }
-
-            // 2. Handle Ungrouped
-            selectedUngrouped.forEach(feed => {
-                if (!currentFeeds.some(f => f.url === feed.url) && !newFeeds.some(f => f.url === feed.url)) {
-                    newFeeds.push({
-                        id: uuidv4(),
-                        url: feed.url,
-                        title: feed.title || feed.url,
-                        description: '',
-                        viewType: 'waterfall',
-                        folderId: undefined,
-                        loadFullContent: true, // Default to true
-                        items: [],
-                        lastUpdated: new Date().toISOString()
-                    });
                 }
-            });
+            };
 
-            // 3. Execute API calls
+            nodesToImport.forEach(node => processNode(node));
+
+            // Execute API calls
             for (const folder of newFolders) {
                 await api.addFolder(folder);
             }

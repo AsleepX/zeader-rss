@@ -1,15 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, Loader2, Folder, Rss, CheckSquare, Square } from 'lucide-react';
 import { useFeedStore } from '../store/useFeedStore';
-import { parseOpml, groupFeedsByCategory } from '../utils/opml';
+import { parseOpml, flattenFeeds } from '../utils/opml';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function ImportOpmlModal({ isOpen, onClose }) {
     const [step, setStep] = useState('upload'); // 'upload', 'analyzing', 'select'
-    const [groups, setGroups] = useState({});
-    const [ungrouped, setUngrouped] = useState([]);
-    const [selectedGroups, setSelectedGroups] = useState({}); // { "Category": true/false }
-    const [selectedUngrouped, setSelectedUngrouped] = useState({}); // { "url": true/false }
+    const [parsedNodes, setParsedNodes] = useState([]);
+    const [selectedIndices, setSelectedIndices] = useState({}); // { index: true/false }
     const fileInputRef = useRef(null);
     const { importOpml, isLoading, feeds: currentFeeds } = useFeedStore();
 
@@ -21,36 +19,35 @@ export function ImportOpmlModal({ isOpen, onClose }) {
 
         try {
             setStep('analyzing');
-            const feeds = await parseOpml(file);
+            const nodes = await parseOpml(file);
 
-            // Filter duplicates
+            // Filter duplicates? 
+            // It's harder with a tree. We can just mark them as existing or let the user decide.
+            // For now, let's keep the logic simple: show everything, but maybe warn or pre-deselect duplicates?
+            // The previous logic filtered duplicates completely.
+            // Let's filter out root feeds that are duplicates.
+            // For folders, we might want to merge? The store logic handles merging folders.
+            // But if a folder contains ONLY duplicate feeds, maybe we shouldn't import it?
+
+            // Let's just load everything and let the store handle duplicates (it checks URL).
+            // But we might want to give feedback.
+
+            const allFeeds = flattenFeeds(nodes);
             const existingUrls = new Set(currentFeeds.map(f => f.url));
-            const newFeeds = feeds.filter(f => !existingUrls.has(f.url));
-            const duplicateCount = feeds.length - newFeeds.length;
+            const newFeedsCount = allFeeds.filter(f => !existingUrls.has(f.url)).length;
 
-            if (duplicateCount > 0) {
-                alert(`${duplicateCount} feeds were excluded because they are already subscribed.`);
-            }
-
-            if (newFeeds.length === 0) {
+            if (newFeedsCount === 0 && allFeeds.length > 0) {
                 alert("All feeds in the OPML file are already subscribed.");
                 setStep('upload');
                 return;
             }
 
-            const { groups: groupedFeeds, ungrouped: ungroupedFeeds } = groupFeedsByCategory(newFeeds);
-
-            setGroups(groupedFeeds);
-            setUngrouped(ungroupedFeeds);
+            setParsedNodes(nodes);
 
             // Default select all
-            const initialSelectedGroups = {};
-            Object.keys(groupedFeeds).forEach(key => initialSelectedGroups[key] = true);
-            setSelectedGroups(initialSelectedGroups);
-
-            const initialSelectedUngrouped = {};
-            ungroupedFeeds.forEach(feed => initialSelectedUngrouped[feed.url] = true);
-            setSelectedUngrouped(initialSelectedUngrouped);
+            const initialSelected = {};
+            nodes.forEach((_, index) => initialSelected[index] = true);
+            setSelectedIndices(initialSelected);
 
             setStep('select');
         } catch (error) {
@@ -61,39 +58,26 @@ export function ImportOpmlModal({ isOpen, onClose }) {
     };
 
     const handleImport = async () => {
-        const finalGroups = {};
-        Object.entries(groups).forEach(([key, feeds]) => {
-            if (selectedGroups[key]) {
-                finalGroups[key] = feeds;
-            }
-        });
-
-        const finalUngrouped = ungrouped.filter(feed => selectedUngrouped[feed.url]);
-
-        await importOpml(finalGroups, finalUngrouped);
+        const nodesToImport = parsedNodes.filter((_, index) => selectedIndices[index]);
+        await importOpml(nodesToImport);
         onClose();
         setStep('upload');
     };
 
-    const toggleGroup = (groupName) => {
-        setSelectedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
-    };
-
-    const toggleUngrouped = (url) => {
-        setSelectedUngrouped(prev => ({ ...prev, [url]: !prev[url] }));
+    const toggleSelection = (index) => {
+        setSelectedIndices(prev => ({ ...prev, [index]: !prev[index] }));
     };
 
     const toggleAll = () => {
-        const allSelected = Object.values(selectedGroups).every(Boolean) && Object.values(selectedUngrouped).every(Boolean);
-
-        const newGroupState = {};
-        Object.keys(groups).forEach(k => newGroupState[k] = !allSelected);
-        setSelectedGroups(newGroupState);
-
-        const newUngroupedState = {};
-        ungrouped.forEach(f => newUngroupedState[f.url] = !allSelected);
-        setSelectedUngrouped(newUngroupedState);
+        const allSelected = Object.values(selectedIndices).every(Boolean);
+        const newSelected = {};
+        parsedNodes.forEach((_, index) => newSelected[index] = !allSelected);
+        setSelectedIndices(newSelected);
     };
+
+    // Helper to separate for display
+    const folders = parsedNodes.map((node, index) => ({ node, index })).filter(item => item.node.type === 'folder');
+    const ungrouped = parsedNodes.map((node, index) => ({ node, index })).filter(item => item.node.type === 'feed');
 
     return (
         <AnimatePresence>
@@ -154,7 +138,7 @@ export function ImportOpmlModal({ isOpen, onClose }) {
                             {step === 'select' && (
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between">
-                                        <h3 className="font-medium text-gray-900">Select feeds to import</h3>
+                                        <h3 className="font-medium text-gray-900">Select items to import</h3>
                                         <button
                                             onClick={toggleAll}
                                             className="text-sm text-primary-600 hover:text-primary-700 font-medium"
@@ -163,23 +147,23 @@ export function ImportOpmlModal({ isOpen, onClose }) {
                                         </button>
                                     </div>
 
-                                    {Object.keys(groups).length > 0 && (
+                                    {folders.length > 0 && (
                                         <div className="space-y-3">
                                             <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Folders</h4>
-                                            {Object.entries(groups).map(([name, feeds]) => (
-                                                <div key={name} className="border border-gray-200 rounded-lg overflow-hidden">
+                                            {folders.map(({ node, index }) => (
+                                                <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
                                                     <div
                                                         className="flex items-center gap-3 p-3 bg-gray-50 cursor-pointer hover:bg-gray-100"
-                                                        onClick={() => toggleGroup(name)}
+                                                        onClick={() => toggleSelection(index)}
                                                     >
-                                                        {selectedGroups[name] ? (
+                                                        {selectedIndices[index] ? (
                                                             <CheckSquare className="w-5 h-5 text-primary-600" />
                                                         ) : (
                                                             <Square className="w-5 h-5 text-gray-400" />
                                                         )}
                                                         <Folder className="w-4 h-4 text-gray-500" />
-                                                        <span className="font-medium text-gray-900">{name}</span>
-                                                        <span className="text-xs text-gray-500 ml-auto">{feeds.length} feeds</span>
+                                                        <span className="font-medium text-gray-900">{node.name}</span>
+                                                        <span className="text-xs text-gray-500 ml-auto">{node.children?.length || 0} feeds</span>
                                                     </div>
                                                 </div>
                                             ))}
@@ -190,21 +174,21 @@ export function ImportOpmlModal({ isOpen, onClose }) {
                                         <div className="space-y-3">
                                             <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Ungrouped Feeds</h4>
                                             <div className="space-y-2">
-                                                {ungrouped.map(feed => (
+                                                {ungrouped.map(({ node, index }) => (
                                                     <div
-                                                        key={feed.url}
+                                                        key={index}
                                                         className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                                                        onClick={() => toggleUngrouped(feed.url)}
+                                                        onClick={() => toggleSelection(index)}
                                                     >
-                                                        {selectedUngrouped[feed.url] ? (
+                                                        {selectedIndices[index] ? (
                                                             <CheckSquare className="w-5 h-5 text-primary-600" />
                                                         ) : (
                                                             <Square className="w-5 h-5 text-gray-400" />
                                                         )}
                                                         <Rss className="w-4 h-4 text-gray-500" />
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-medium text-gray-900 truncate">{feed.title}</p>
-                                                            <p className="text-xs text-gray-500 truncate">{feed.url}</p>
+                                                            <p className="text-sm font-medium text-gray-900 truncate">{node.title}</p>
+                                                            <p className="text-xs text-gray-500 truncate">{node.url}</p>
                                                         </div>
                                                     </div>
                                                 ))}
