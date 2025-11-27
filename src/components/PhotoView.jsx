@@ -6,7 +6,7 @@ import { FeedDetailModal } from './FeedDetailModal';
 import { useFeedStore } from '../store/useFeedStore';
 import { useAIStore } from '../store/useAIStore';
 
-export function WaterfallView({ feeds }) {
+export function PhotoView({ feeds }) {
   const [selectedItem, setSelectedItem] = useState(null);
   const [originRect, setOriginRect] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
@@ -14,6 +14,18 @@ export function WaterfallView({ feeds }) {
   const [isKeyboardMode, setIsKeyboardMode] = useState(false);
   const [tempReadIds, setTempReadIds] = useState(new Set());
   const { markItemAsRead, showUnreadOnly } = useFeedStore();
+
+  // Handle browser back button
+  useEffect(() => {
+    const handlePopState = (event) => {
+      if (selectedItem) {
+        setSelectedItem(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [selectedItem]);
 
   // Reset tempReadIds when showUnreadOnly changes
   useEffect(() => {
@@ -197,6 +209,7 @@ export function WaterfallView({ feeds }) {
               const rect = el.getBoundingClientRect();
               setOriginRect(rect);
               setSelectedItem(item);
+              window.history.pushState({ type: 'photo', id: item.id }, '', '');
             }
           }
           return;
@@ -331,6 +344,7 @@ export function WaterfallView({ feeds }) {
                     setOriginRect(rect);
                     setSelectedItem(item);
                     setFocusedIndex(item.globalIndex);
+                    window.history.pushState({ type: 'photo', id: item.id }, '', '');
                     if (!item.read) {
                       if (showUnreadOnly) {
                         setTempReadIds(prev => {
@@ -410,7 +424,7 @@ export function WaterfallView({ feeds }) {
           <FeedDetailModal
             item={selectedItem}
             originRect={originRect}
-            onClose={() => setSelectedItem(null)}
+            onClose={() => window.history.back()}
           />
         )}
       </AnimatePresence>

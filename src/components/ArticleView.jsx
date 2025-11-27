@@ -645,6 +645,18 @@ export function ArticleView({ feeds }) {
   const scrollPositionRef = useRef(0);
   const listContainerRef = useRef(null);
 
+  // Handle browser back button
+  useEffect(() => {
+    const handlePopState = (event) => {
+      if (selectedArticle) {
+        setSelectedArticle(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [selectedArticle]);
+
   const allItems = feeds.flatMap(feed =>
     feed.items.map(item => ({ ...item, feedTitle: feed.title, feedId: feed.id }))
   ).filter(item => !showUnreadOnly || !item.read)
@@ -685,7 +697,7 @@ export function ArticleView({ feeds }) {
         >
           <ArticleDetail
             article={selectedArticle}
-            onBack={() => setSelectedArticle(null)}
+            onBack={() => window.history.back()}
           />
         </motion.div>
       ) : (
@@ -714,6 +726,10 @@ export function ArticleView({ feeds }) {
               setHasNavigated(true);
               setSelectedArticle(article);
               setLastSelectedId(article.id);
+
+              // Push history state
+              window.history.pushState({ type: 'article', id: article.id }, '', '');
+
               if (!article.read) {
                 markItemAsRead(article.feedId, article.id);
               }

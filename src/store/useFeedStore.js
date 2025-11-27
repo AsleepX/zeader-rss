@@ -58,7 +58,11 @@ export const useFeedStore = create((set, get) => ({
                 api.getFeeds(),
                 api.getFolders()
             ]);
-            set({ feeds, folders, isLoading: false });
+            // Migrate legacy 'waterfall' viewType to 'photo'
+            const migratedFeeds = feeds.map(f => f.viewType === 'waterfall' ? { ...f, viewType: 'photo' } : f);
+            const migratedFolders = folders.map(f => f.viewType === 'waterfall' ? { ...f, viewType: 'photo' } : f);
+
+            set({ feeds: migratedFeeds, folders: migratedFolders, isLoading: false });
         } catch (error) {
             console.error('Failed to load data:', error);
             set({ error: 'Failed to load data', isLoading: false });
@@ -71,7 +75,7 @@ export const useFeedStore = create((set, get) => ({
             const newFolder = {
                 id: uuidv4(),
                 name,
-                viewType, // 'waterfall' or 'article' or null
+                viewType, // 'photo' or 'article' or null
                 createdAt: new Date().toISOString()
             };
 
@@ -228,7 +232,7 @@ export const useFeedStore = create((set, get) => ({
                 url,
                 title: feedData.title || url,
                 description: feedData.description,
-                viewType, // 'article' or 'waterfall'
+                viewType, // 'article' or 'photo'
                 folderId: targetFolderId,
                 loadFullContent: true, // Default to true
                 items: feedData.items.map(item => ({
@@ -310,7 +314,7 @@ export const useFeedStore = create((set, get) => ({
                             url: node.url,
                             title: node.title || node.url,
                             description: '',
-                            viewType: node.viewType || 'waterfall',
+                            viewType: node.viewType === 'waterfall' ? 'photo' : (node.viewType || 'photo'),
                             folderId: parentFolderId,
                             loadFullContent: node.loadFullContent !== undefined ? node.loadFullContent : true,
                             items: [],
@@ -540,13 +544,16 @@ export const useFeedStore = create((set, get) => ({
         }
     },
 
-    markCurrentViewAsRead: async () => {
+    markCurrentViewAsRead: async (viewType) => {
         const { selectedSource, feeds } = get();
         let updatedFeeds = [...feeds];
         let hasChanges = false;
 
         if (selectedSource.type === 'all') {
             updatedFeeds = updatedFeeds.map(feed => {
+                // Filter by viewType if provided
+                if (viewType && feed.viewType !== viewType) return feed;
+
                 const hasUnread = feed.items.some(item => !item.read);
                 if (hasUnread) {
                     hasChanges = true;

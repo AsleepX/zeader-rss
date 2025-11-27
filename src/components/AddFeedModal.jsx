@@ -84,13 +84,13 @@ export function AddFeedModal({ isOpen, onClose }) {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setViewType('waterfall')}
-                                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${viewType === 'waterfall'
+                                        onClick={() => setViewType('photo')}
+                                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${viewType === 'photo'
                                             ? 'border-primary-600 bg-primary-50 text-primary-700'
                                             : 'border-gray-200 hover:border-gray-300 text-gray-600'
                                             }`}
                                     >
-                                        Gallery
+                                        Photo
                                     </button>
                                 </div>
                             </div>
