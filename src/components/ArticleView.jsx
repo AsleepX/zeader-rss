@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { Clock, ChevronLeft, Play, Share2, Globe, Sparkles, Loader2 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -49,7 +49,7 @@ function ArticleList({ articles, onSelectArticle, initialSelectedId, onMarkAsRea
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const updateHighlight = () => {
       if (selectedIndex >= 0 && itemRefs.current[selectedIndex]) {
         const el = itemRefs.current[selectedIndex];
@@ -140,7 +140,7 @@ function ArticleList({ articles, onSelectArticle, initialSelectedId, onMarkAsRea
                 setSelectedIndex(index);
               }
             }}
-            className={`group flex gap-3 px-6 py-3 cursor-pointer relative z-10 mb-2 rounded-lg transition-colors duration-200 ${index === selectedIndex ? '' : 'hover:bg-gray-50'
+            className={`group flex gap-2 md:gap-3 px-3 md:px-6 py-3 cursor-pointer relative z-10 mb-2 rounded-lg transition-colors duration-200 ${index === selectedIndex ? '' : 'hover:bg-gray-50'
               }`}
           >
             {/* Thumbnail */}
@@ -211,8 +211,32 @@ function ArticleDetail({ article, onBack }) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedBlockIndex, setSelectedBlockIndex] = useState(0);
   const [contentBlocks, setContentBlocks] = useState([]);
+  const [highlightStyle, setHighlightStyle] = useState({ top: 0, height: 0, opacity: 0 });
   const blockRefs = useRef([]);
   const contentRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const updateHighlight = () => {
+      if (selectedBlockIndex >= 0 && blockRefs.current[selectedBlockIndex]) {
+        const el = blockRefs.current[selectedBlockIndex];
+        // Calculate relative position within the article container
+        const container = contentRef.current;
+        if (container) {
+          setHighlightStyle({
+            top: el.offsetTop,
+            height: el.offsetHeight,
+            opacity: 1
+          });
+        }
+      } else {
+        setHighlightStyle(prev => ({ ...prev, opacity: 0 }));
+      }
+    };
+
+    updateHighlight();
+    window.addEventListener('resize', updateHighlight);
+    return () => window.removeEventListener('resize', updateHighlight);
+  }, [selectedBlockIndex, contentBlocks]);
   const scrollContainerRef = useRef(null); // 添加滚动容器的引用
   const isUserScrolling = useRef(false);
   const scrollTimeout = useRef(null);
@@ -565,7 +589,17 @@ Summary: [三句话摘要]
         )}
 
         {/* Article Content */}
-        <article ref={contentRef} className="prose prose-xl prose-slate max-w-none font-serif prose-headings:font-serif prose-a:text-primary-600 prose-img:rounded-xl [&_p]:text-[22px] [&_p]:leading-relaxed [&_li]:text-[22px] [&_iframe]:w-full [&_iframe]:!h-auto [&_iframe]:!aspect-[3/2] translate-x-[2%]">
+        <article ref={contentRef} className="prose prose-xl prose-slate max-w-none font-serif prose-headings:font-serif prose-a:text-primary-600 prose-img:rounded-xl [&_p]:text-[22px] [&_p]:leading-relaxed [&_li]:text-[22px] [&_iframe]:w-full [&_iframe]:!h-auto [&_iframe]:!aspect-[3/2] translate-x-[2%] relative">
+          {/* Highlight Line */}
+          <div
+            className="absolute -left-6 w-1 bg-[#76B2ED] transition-all duration-200 ease-out pointer-events-none"
+            style={{
+              top: highlightStyle.top,
+              height: highlightStyle.height,
+              opacity: highlightStyle.opacity,
+            }}
+          />
+
           {isLoading && !fullContent && (
             <div className="flex items-center gap-2 text-sm text-gray-400 mb-4 animate-pulse">
               <div className="w-4 h-4 border-2 border-gray-200 border-t-primary-500 rounded-full animate-spin"></div>
@@ -577,10 +611,7 @@ Summary: [三句话摘要]
               <div
                 key={index}
                 ref={el => blockRefs.current[index] = el}
-                className={`transition-all duration-200 ${index === selectedBlockIndex
-                  ? 'border-l-4 border-[#76B2ED] pl-6 -ml-6'
-                  : 'border-l-4 border-transparent pl-6 -ml-6'
-                  }`}
+                className="transition-all duration-200 mb-6 pl-6 -ml-6 border-l-4 border-transparent"
               >
                 <MemoizedContentBlock html={block.html} />
               </div>
@@ -611,6 +642,8 @@ export function ArticleView({ feeds }) {
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [hasNavigated, setHasNavigated] = useState(false);
   const [lastSelectedId, setLastSelectedId] = useState(null);
+  const scrollPositionRef = useRef(0);
+  const listContainerRef = useRef(null);
 
   const allItems = feeds.flatMap(feed =>
     feed.items.map(item => ({ ...item, feedTitle: feed.title, feedId: feed.id }))
@@ -623,10 +656,12 @@ export function ArticleView({ feeds }) {
       return dateB - dateA;
     });
 
-  // AI Context Logic - Removed 'Z' key trigger as requested
-  // The AI summary is now automatically generated in ArticleDetail
-  useEffect(() => {
-    // Keep empty effect or remove entirely if not needed for other things
+  // Restore scroll position when returning to list view
+  const setListContainerRef = useCallback((node) => {
+    listContainerRef.current = node;
+    if (node && scrollPositionRef.current > 0) {
+      node.scrollTop = scrollPositionRef.current;
+    }
   }, []);
 
   if (allItems.length === 0) {
@@ -656,6 +691,7 @@ export function ArticleView({ feeds }) {
       ) : (
         <motion.div
           key="list"
+          ref={setListContainerRef}
           initial={hasNavigated ? { opacity: 0, x: -50 } : false}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -50 }}
@@ -671,6 +707,10 @@ export function ArticleView({ feeds }) {
               }
             }}
             onSelectArticle={(article) => {
+              // Save current scroll position before navigating
+              if (listContainerRef.current) {
+                scrollPositionRef.current = listContainerRef.current.scrollTop;
+              }
               setHasNavigated(true);
               setSelectedArticle(article);
               setLastSelectedId(article.id);

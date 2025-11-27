@@ -88,7 +88,7 @@ function App() {
   return (
     <div className="flex h-screen bg-gray-50 font-sans text-gray-900">
       <div
-        className={`transition-all duration-300 ease-in-out overflow-hidden ${isSidebarOpen ? 'w-[240px] opacity-100' : 'w-0 opacity-0'}`}
+        className={`transition-all duration-300 ease-in-out overflow-hidden flex-shrink-0 ${isSidebarOpen ? 'w-[240px] opacity-100' : 'w-0 opacity-0'}`}
       >
         <div className="w-[240px]">
           <Sidebar
@@ -104,7 +104,7 @@ function App() {
         </div>
       </div>
 
-      <main className="flex-1 flex flex-col h-screen relative">
+      <main className="flex-1 flex flex-col h-screen relative min-w-0 overflow-x-hidden">
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="absolute top-4 left-4 z-50 p-2 text-gray-500 hover:bg-gray-100 bg-white/80 backdrop-blur-sm rounded-lg transition-all duration-300 border border-gray-200 opacity-0 hover:opacity-100"

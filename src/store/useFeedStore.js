@@ -5,17 +5,29 @@ import { api } from '../utils/api';
 
 const NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'; // Standard DNS namespace
 
-const generateItemId = (item) => {
+const generateItemId = (item, feedUrl) => {
+    // Prefer explicit unique identifiers
     if (item.guid) return item.guid;
     if (item.link) return item.link;
 
     // Create a stable ID based on available content
-    // Prefer title + date, fallback to title, then just random
-    const payload = (item.title || '') + (item.isoDate || item.pubDate || '');
+    // Include title, date, author, and content snippet for better uniqueness
+    const parts = [
+        item.title || '',
+        item.isoDate || item.pubDate || '',
+        item.author || '',
+        // Add a small snippet of content for additional uniqueness
+        (item.contentSnippet || item.content || '').slice(0, 100),
+        feedUrl || '' // Include feed URL as additional context
+    ];
+
+    const payload = parts.filter(p => p).join('|');
+
     if (payload) {
         return uuidv5(payload, NAMESPACE);
     }
 
+    // Last resort: random UUID
     return uuidv4();
 };
 
@@ -218,7 +230,7 @@ export const useFeedStore = create((set, get) => ({
                 loadFullContent: true, // Default to true
                 items: feedData.items.map(item => ({
                     ...item,
-                    id: generateItemId(item),
+                    id: generateItemId(item, url),
                     read: false,
                     feedId: url // temporary ID linking
                 })),
@@ -362,7 +374,7 @@ export const useFeedStore = create((set, get) => ({
                     return {
                         ...feed,
                         items: feedData.items.map(item => {
-                            const id = generateItemId(item);
+                            const id = generateItemId(item, feed.url);
                             const existingItem = existingItemsMap.get(id);
 
                             return {
