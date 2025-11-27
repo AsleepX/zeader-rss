@@ -18,7 +18,8 @@ const generateItemId = (item, feedUrl) => {
         item.author || '',
         // Add a small snippet of content for additional uniqueness
         (item.contentSnippet || item.content || '').slice(0, 100),
-        feedUrl || '' // Include feed URL as additional context
+        feedUrl || '', // Include feed URL as additional context
+        uuidv4() // Add a random component to guarantee uniqueness
     ];
 
     const payload = parts.filter(p => p).join('|');
