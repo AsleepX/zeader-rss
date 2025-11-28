@@ -15,13 +15,17 @@ import { FolderItem } from './sidebar/FolderItem';
 import { FeedList } from './sidebar/FeedList';
 
 // Root Droppable Area
-const RootDroppable = ({ children }) => {
+const RootDroppable = ({ children, onContextMenu }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'root',
   });
 
   return (
-    <div ref={setNodeRef} className={clsx("flex-1 overflow-y-auto px-4 space-y-8 pb-20", isOver && "bg-gray-50/50")}>
+    <div
+      ref={setNodeRef}
+      className={clsx("flex-1 overflow-y-auto px-4 space-y-8 pb-20", isOver && "bg-gray-50/50")}
+      onContextMenu={onContextMenu}
+    >
       {children}
     </div>
   );
@@ -285,8 +289,8 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
 
         </div>
 
-        <RootDroppable>
-          <div className="space-y-1" onContextMenu={(e) => handleContextMenu(e, currentView)}>
+        <RootDroppable onContextMenu={(e) => handleContextMenu(e, currentView)}>
+          <div className="space-y-1">
             {currentFolders.map(renderFolder)}
             <FeedList
               items={currentUngroupedFeeds}
