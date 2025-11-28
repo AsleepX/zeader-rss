@@ -301,10 +301,12 @@ export function PhotoView({ feeds }) {
     div.innerHTML = htmlContent;
     const textContent = div.textContent || div.innerText || '';
 
-    // Look for "ID: XXXXX" pattern in text content
-    // The text content usually looks like "ID: GQN-007 Released Date: ..."
-    // Using a more flexible regex to catch ID followed by whitespace or end of line
-    const idMatch = textContent.match(/ID:\s*([A-Za-z0-9-]+)/i);
+    // Look for "ID: XXXXX" pattern in text content (JavDB)
+    let idMatch = textContent.match(/ID:\s*([A-Za-z0-9-]+)/i);
+    if (idMatch) return idMatch[1];
+
+    // Look for "識別碼: XXXXX" pattern in text content (JavBus)
+    idMatch = textContent.match(/識別碼:\s*([A-Za-z0-9-]+)/i);
     if (idMatch) return idMatch[1];
 
     // 2. Fallback: Try to extract from title (e.g. "GQN-007 Title...")
@@ -331,8 +333,8 @@ export function PhotoView({ feeds }) {
           <div key={colIndex} className="flex-1 space-y-4 min-w-0">
             {colItems.map(item => {
               const image = getImage(item);
-              const isJavDb = item.feedUrl?.includes('javdb');
-              const javId = isJavDb ? extractJavId(item) : null;
+              const isJavSource = item.feedUrl?.includes('javdb') || item.feedUrl?.includes('javbus');
+              const javId = isJavSource ? extractJavId(item) : null;
               const isFocused = item.globalIndex === focusedIndex;
 
               return (
@@ -400,7 +402,7 @@ export function PhotoView({ feeds }) {
                         <span className="text-[10px] text-gray-400 text-right w-full">
                           {item.isoDate || item.pubDate ? formatDistanceToNow(new Date(item.isoDate || item.pubDate), { addSuffix: true }).replace('about ', '') : ''}
                         </span>
-                        {isJavDb && javId && (
+                        {isJavSource && javId && (
                           <button
                             onClick={(e) => handleCopy(e, javId)}
                             className="p-1.5 hover:bg-primary-50 rounded-full transition-colors text-gray-400 hover:text-primary-600 flex-shrink-0"
