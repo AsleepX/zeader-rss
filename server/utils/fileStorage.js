@@ -193,7 +193,7 @@ const generateItemId = (item, feedUrl) => {
 };
 
 // Helper to update just one feed's items (Performance optimization)
-export function updateFeedItems(feedId, items, feedUrl) {
+export function updateFeedItems(feedId, items, feedUrl, preserveState = true) {
     try {
         ensureDirectories();
         const feedFile = path.join(STORAGE_DIR, `${feedId}.json`);
@@ -225,8 +225,8 @@ export function updateFeedItems(feedId, items, feedUrl) {
             return {
                 ...item,
                 id,
-                // Preserve local state from existing item
-                read: existingItem ? existingItem.read : false,
+                // Preserve local state from existing item ONLY if preserveState is true
+                read: (preserveState && existingItem) ? existingItem.read : (item.read || false),
                 feedId: feedId, // Ensure feedId is set
                 // Preserve other potential local fields if any
                 ...((existingItem && existingItem.starred) ? { starred: existingItem.starred } : {})

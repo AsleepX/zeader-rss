@@ -214,7 +214,7 @@ app.put('/api/feeds/:id', (req, res) => {
         data.feeds[feedIndex] = { ...data.feeds[feedIndex], ...updates };
 
         const configSaved = writeMainConfig(data);
-        const itemsSaved = updateFeedItems(id, data.feeds[feedIndex].items || [], data.feeds[feedIndex].url);
+        const itemsSaved = updateFeedItems(id, data.feeds[feedIndex].items || [], data.feeds[feedIndex].url, false);
 
         if (configSaved && itemsSaved) {
             res.json(data.feeds[feedIndex]);

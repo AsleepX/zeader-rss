@@ -42,9 +42,14 @@ export async function refreshAllFeeds() {
         let updatedCount = 0;
         let errorCount = 0;
 
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
         // Process feeds sequentially to avoid overwhelming the network/cpu
         for (const feed of feeds) {
             try {
+                // Add a small delay to avoid rate limiting (especially for RSSHub)
+                await delay(200);
+
                 const fetchedFeed = await fetchFeed(feed.url);
 
                 if (fetchedFeed && fetchedFeed.items) {
