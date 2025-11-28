@@ -67,47 +67,48 @@ export const BottomSheet = ({ isOpen, onClose, viewType, title }) => {
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-4 pb-24">
-                            <DndContext>
-                                <div className="space-y-1">
-                                    {currentFolders.map(folder => (
-                                        <div key={folder.id}>
-                                            <FolderItem
-                                                folder={folder}
-                                                isExpanded={expandedFolders[folder.id]}
-                                                toggleFolder={toggleFolder}
-                                                onDelete={deleteFolder}
-                                                isSelected={selectedSource.type === 'folder' && selectedSource.id === folder.id}
-                                                onSelect={() => {
-                                                    selectSource('folder', folder.id);
-                                                    onClose();
-                                                }}
-                                            >
-                                                {expandedFolders[folder.id] && (
-                                                    <FeedList
-                                                        items={feeds.filter(f => f.folderId === folder.id)}
-                                                        onRemove={removeFeed}
-                                                        selectedSource={selectedSource}
-                                                        onSelectFeed={(id) => {
-                                                            selectSource('feed', id);
-                                                            onClose();
-                                                        }}
-                                                    />
-                                                )}
-                                            </FolderItem>
-                                        </div>
-                                    ))}
+                            <div className="space-y-1">
+                                {currentFolders.map(folder => (
+                                    <div key={folder.id}>
+                                        <FolderItem
+                                            folder={folder}
+                                            isExpanded={expandedFolders[folder.id]}
+                                            toggleFolder={toggleFolder}
+                                            onDelete={deleteFolder}
+                                            isSelected={selectedSource.type === 'folder' && selectedSource.id === folder.id}
+                                            onSelect={() => {
+                                                selectSource('folder', folder.id);
+                                                onClose();
+                                            }}
+                                            dragEnabled={false}
+                                        >
+                                            {expandedFolders[folder.id] && (
+                                                <FeedList
+                                                    items={feeds.filter(f => f.folderId === folder.id)}
+                                                    onRemove={removeFeed}
+                                                    selectedSource={selectedSource}
+                                                    onSelectFeed={(id) => {
+                                                        selectSource('feed', id);
+                                                        onClose();
+                                                    }}
+                                                    dragEnabled={false}
+                                                />
+                                            )}
+                                        </FolderItem>
+                                    </div>
+                                ))}
 
-                                    <FeedList
-                                        items={currentUngroupedFeeds}
-                                        onRemove={removeFeed}
-                                        selectedSource={selectedSource}
-                                        onSelectFeed={(id) => {
-                                            selectSource('feed', id);
-                                            onClose();
-                                        }}
-                                    />
-                                </div>
-                            </DndContext>
+                                <FeedList
+                                    items={currentUngroupedFeeds}
+                                    onRemove={removeFeed}
+                                    selectedSource={selectedSource}
+                                    onSelectFeed={(id) => {
+                                        selectSource('feed', id);
+                                        onClose();
+                                    }}
+                                    dragEnabled={false}
+                                />
+                            </div>
                         </div>
                     </motion.div>
                 </>

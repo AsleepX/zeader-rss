@@ -4,10 +4,11 @@ import { CSS } from '@dnd-kit/utilities';
 import clsx from 'clsx';
 import { Trash2, Folder, FolderOpen } from 'lucide-react';
 
-export const FolderItem = ({ folder, isExpanded, toggleFolder, onDelete, children, isSelected, onSelect, onContextMenu }) => {
+export const FolderItem = ({ folder, isExpanded, toggleFolder, onDelete, children, isSelected, onSelect, onContextMenu, dragEnabled = true }) => {
     const draggable = useDraggable({
         id: `folder-drag-${folder.id}`,
-        data: { folder, type: 'folder' }
+        data: { folder, type: 'folder' },
+        disabled: !dragEnabled
     });
 
     const droppable = useDroppable({
@@ -30,7 +31,7 @@ export const FolderItem = ({ folder, isExpanded, toggleFolder, onDelete, childre
             style={style}
             {...listeners}
             {...attributes}
-            className={clsx("touch-none", isDragging && "opacity-30")}
+            className={clsx(dragEnabled && "touch-none", isDragging && "opacity-30")}
         >
             <div
                 ref={setDroppableRef}

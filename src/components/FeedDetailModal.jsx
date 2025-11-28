@@ -194,7 +194,7 @@ Summary: 渚光希与久留木玲出演的AV作品
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 pointer-events-none">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 pointer-events-none">
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

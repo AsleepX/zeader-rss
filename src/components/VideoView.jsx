@@ -84,7 +84,7 @@ export function VideoView({ feeds }) {
         if (width >= 1280) return 4;
         if (width >= 1024) return 3;
         if (width >= 640) return 2;
-        return 1;
+        return 2;
     };
 
     const [numColumns, setNumColumns] = useState(getNumColumns);

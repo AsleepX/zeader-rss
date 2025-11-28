@@ -4,10 +4,11 @@ import { CSS } from '@dnd-kit/utilities';
 import clsx from 'clsx';
 import { Trash2 } from 'lucide-react';
 
-export const DraggableFeed = ({ feed, onRemove, isSelected, onClick, onContextMenu }) => {
+export const DraggableFeed = ({ feed, onRemove, isSelected, onClick, onContextMenu, dragEnabled = true }) => {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: feed.id,
-        data: { feed }
+        data: { feed },
+        disabled: !dragEnabled
     });
 
     const style = transform ? {
@@ -23,7 +24,8 @@ export const DraggableFeed = ({ feed, onRemove, isSelected, onClick, onContextMe
             onClick={onClick}
             onContextMenu={onContextMenu}
             className={clsx(
-                "group flex items-center justify-between px-3.5 py-2 rounded-lg transition-colors cursor-grab active:cursor-grabbing touch-none",
+                "group flex items-center justify-between px-3.5 py-2 rounded-lg transition-colors cursor-grab active:cursor-grabbing",
+                dragEnabled && "touch-none",
                 isDragging ? "opacity-30" : "",
                 isSelected ? "bg-primary-50 text-primary-600" : "hover:bg-gray-50"
             )}
