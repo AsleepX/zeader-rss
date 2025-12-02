@@ -29,6 +29,7 @@ A modern, personal RSS reader application built with React and Node.js, designed
 
 - **Z YAML (Gallery View)**: Automatically generates a structured YAML info bar for image galleries, extracting key details like Title, Creator, and Tags.
 - **Z Summary (Article View)**: Automatically generates a concise 3-sentence summary with tags for articles, helping you grasp the core content quickly.
+- **AI Unread Summary**: Analyzes all your unread articles and synthesizes them into an intelligent news digest. It identifies common themes, trends, and connections across articles, presenting key highlights and notable insights. Clickable references let you jump directly to any mentioned article.
 
 
 ## Keyboard Shortcuts
