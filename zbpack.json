@@ -1,6 +1,5 @@
 {
-  "node": {
-    "build_command": "npm install && npm run build",
-    "start_command": "node server/index.js"
-  }
+  "build_type": "node",
+  "start_command": "node server/index.js",
+  "static": false
 }
