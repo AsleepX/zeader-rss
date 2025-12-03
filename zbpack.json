@@ -1,5 +1,6 @@
 {
-  "build_command": "npm run build",
-  "start_command": "npm start",
-  "node_version": "20"
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "build_command": "npm install && npm run build",
+  "start_command": "node server/index.js",
+  "serverless": false
 }
