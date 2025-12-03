@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useFeedStore } from '../store/useFeedStore';
 import { useAIStore } from '../store/useAIStore';
 import { api } from '../utils/api';
+import { AISummaryPanel } from './AISummaryPanel';
 
 // Helper to extract the first image from HTML content
 const extractImage = (html) => {
@@ -645,6 +646,9 @@ export function ArticleView({ feeds }) {
   const scrollPositionRef = useRef(0);
   const listContainerRef = useRef(null);
 
+  // AI Summary Panel State
+  const [isAISummaryOpen, setIsAISummaryOpen] = useState(false);
+
   // Handle browser back button
   useEffect(() => {
     const handlePopState = (event) => {
@@ -656,6 +660,24 @@ export function ArticleView({ feeds }) {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [selectedArticle]);
+
+  // Handle 'z' key for AI Summary Panel
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore shortcuts if user is typing in an input or textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+        return;
+      }
+
+      // Toggle AI Summary Panel on 'z' key press
+      if (e.key === 'z' || e.key === 'Z') {
+        setIsAISummaryOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAISummaryOpen]);
 
   const allItems = feeds.flatMap(feed =>
     feed.items.map(item => ({ ...item, feedTitle: feed.title, feedId: feed.id }))
@@ -676,67 +698,112 @@ export function ArticleView({ feeds }) {
     }
   }, []);
 
+  // Handle article selection from AI Summary Panel
+  const handleSelectArticleFromSummary = useCallback((articleRef) => {
+    // Find the full article from allItems using the reference
+    const fullArticle = allItems.find(item =>
+      item.id === articleRef.id ||
+      (item.feedId === articleRef.feedId && item.title === articleRef.title)
+    );
+
+    if (fullArticle) {
+      // Save current scroll position
+      if (listContainerRef.current) {
+        scrollPositionRef.current = listContainerRef.current.scrollTop;
+      }
+      setHasNavigated(true);
+      setSelectedArticle(fullArticle);
+      setLastSelectedId(fullArticle.id);
+
+      // Push history state
+      window.history.pushState({ type: 'article', id: fullArticle.id }, '', '');
+
+      if (!fullArticle.read) {
+        markItemAsRead(fullArticle.feedId, fullArticle.id);
+      }
+    }
+  }, [allItems, markItemAsRead]);
+
   if (allItems.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-400">
-        <p>No articles found. Add some feeds to get started!</p>
+      <div className="flex h-full">
+        <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+          <p>No articles found. Add some feeds to get started!</p>
+        </div>
+        {/* AI Summary Panel */}
+        <AISummaryPanel
+          isOpen={isAISummaryOpen}
+          onClose={() => setIsAISummaryOpen(false)}
+          onSelectArticle={handleSelectArticleFromSummary}
+        />
       </div>
     );
   }
 
   return (
-    <AnimatePresence mode="wait">
-      {selectedArticle ? (
-        <motion.div
-          key="detail"
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 50 }}
-          transition={{ duration: 0.15, ease: "easeInOut" }}
-          className="h-full"
-        >
-          <ArticleDetail
-            article={selectedArticle}
-            onBack={() => window.history.back()}
-          />
-        </motion.div>
-      ) : (
-        <motion.div
-          key="list"
-          ref={setListContainerRef}
-          initial={hasNavigated ? { opacity: 0, x: -50 } : false}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -50 }}
-          transition={{ duration: 0.15, ease: "easeInOut" }}
-          className="h-full overflow-y-auto"
-        >
-          <ArticleList
-            articles={allItems}
-            initialSelectedId={lastSelectedId}
-            onMarkAsRead={(article) => {
-              if (!article.read) {
-                markItemAsRead(article.feedId, article.id);
-              }
-            }}
-            onSelectArticle={(article) => {
-              // Save current scroll position before navigating
-              if (listContainerRef.current) {
-                scrollPositionRef.current = listContainerRef.current.scrollTop;
-              }
-              setHasNavigated(true);
-              setSelectedArticle(article);
-              setLastSelectedId(article.id);
+    <div className="flex h-full">
+      <div className="flex-1 min-w-0 h-full">
+        <AnimatePresence mode="wait">
+          {selectedArticle ? (
+            <motion.div
+              key="detail"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 50 }}
+              transition={{ duration: 0.15, ease: "easeInOut" }}
+              className="h-full"
+            >
+              <ArticleDetail
+                article={selectedArticle}
+                onBack={() => window.history.back()}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="list"
+              ref={setListContainerRef}
+              initial={hasNavigated ? { opacity: 0, x: -50 } : false}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.15, ease: "easeInOut" }}
+              className="h-full overflow-y-auto"
+            >
+              <ArticleList
+                articles={allItems}
+                initialSelectedId={lastSelectedId}
+                onMarkAsRead={(article) => {
+                  if (!article.read) {
+                    markItemAsRead(article.feedId, article.id);
+                  }
+                }}
+                onSelectArticle={(article) => {
+                  // Save current scroll position before navigating
+                  if (listContainerRef.current) {
+                    scrollPositionRef.current = listContainerRef.current.scrollTop;
+                  }
+                  setHasNavigated(true);
+                  setSelectedArticle(article);
+                  setLastSelectedId(article.id);
 
-              // Push history state
-              window.history.pushState({ type: 'article', id: article.id }, '', '');
+                  // Push history state
+                  window.history.pushState({ type: 'article', id: article.id }, '', '');
 
-              if (!article.read) {
-                markItemAsRead(article.feedId, article.id);
-              }
-            }}
-          />
-        </motion.div>
-      )}
-    </AnimatePresence>
+                  if (!article.read) {
+                    markItemAsRead(article.feedId, article.id);
+                  }
+                }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* AI Summary Panel - Side Panel (inline, not overlay) */}
+      <AISummaryPanel
+        isOpen={isAISummaryOpen}
+        onClose={() => setIsAISummaryOpen(false)}
+        onSelectArticle={handleSelectArticleFromSummary}
+      />
+    </div>
   );
 }
