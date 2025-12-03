@@ -300,6 +300,9 @@ const handleAIProxy = async (req, res, targetBaseUrl) => {
 
         console.log(`Proxying AI request to: ${targetUrl}`);
 
+        // Check if this is a streaming request
+        const isStreaming = req.body?.stream === true;
+
         const response = await fetch(targetUrl, {
             method: req.method,
             headers: {
@@ -309,8 +312,35 @@ const handleAIProxy = async (req, res, targetBaseUrl) => {
             body: JSON.stringify(req.body)
         });
 
-        const data = await response.json();
-        res.status(response.status).json(data);
+        if (isStreaming) {
+            // Handle streaming response
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+
+            // Pipe the response body directly to the client
+            if (response.body) {
+                const reader = response.body.getReader();
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        res.write(value);
+                    }
+                } catch (streamError) {
+                    console.error('Stream error:', streamError);
+                } finally {
+                    res.end();
+                }
+            } else {
+                res.status(500).json({ error: 'No response body for streaming' });
+            }
+        } else {
+            // Handle non-streaming response
+            const data = await response.json();
+            res.status(response.status).json(data);
+        }
     } catch (error) {
         console.error('AI Proxy Error:', error);
         res.status(500).json({ error: 'Failed to proxy AI request' });
