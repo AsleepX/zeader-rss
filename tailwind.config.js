@@ -7,9 +7,10 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                serif: ['Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
+                serif: ['"Source Serif 4"', '"Noto Serif SC Adjusted"', '"Noto Serif SC"', '"Source Serif Pro"', 'Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
                 outfit: ['Outfit', 'sans-serif'],
                 merriweather: ['Merriweather', 'serif'],
+                chinese: ['"Source Serif 4"', '"Noto Serif SC Adjusted"', '"Noto Serif SC"', '"PingFang SC"', '"Microsoft YaHei"'],
             },
         },
     },

@@ -523,7 +523,7 @@ Summary: [三句话摘要]
         </button>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8 animate-in fade-in duration-300">
+      <div className="max-w-[646px] mx-auto px-6 py-8 animate-in fade-in duration-300">
         {/* Article Header */}
         <header className="mb-10">
           <div className="flex items-center gap-2 mb-6 text-sm font-medium text-gray-600">
@@ -533,7 +533,7 @@ Summary: [三句话摘要]
             <span>{article.feedTitle}</span>
           </div>
 
-          <h1 className="font-serif text-4xl md:text-5xl font-medium text-gray-900 mb-6 leading-tight">
+          <h1 className="article-title text-4xl md:text-5xl font-medium text-gray-900 mb-6 leading-tight">
             {article.title}
           </h1>
 
@@ -590,10 +590,10 @@ Summary: [三句话摘要]
         )}
 
         {/* Article Content */}
-        <article ref={contentRef} className="prose prose-xl prose-slate max-w-none font-serif prose-headings:font-serif prose-a:text-primary-600 prose-img:rounded-xl [&_p]:text-[22px] [&_p]:leading-relaxed [&_li]:text-[22px] [&_iframe]:w-full [&_iframe]:!h-auto [&_iframe]:!aspect-[3/2] translate-x-[2%] relative">
+        <article ref={contentRef} className="prose prose-lg prose-slate max-w-none font-serif prose-headings:font-serif prose-a:text-primary-600 prose-img:rounded-xl [&_iframe]:w-full [&_iframe]:!h-auto [&_iframe]:!aspect-[3/2] translate-x-[2%] relative">
           {/* Highlight Line */}
           <div
-            className="absolute -left-6 w-1 bg-[#76B2ED] transition-all duration-200 ease-out pointer-events-none"
+            className="absolute -left-6 w-[3.5px] bg-[#76B2ED] transition-all duration-200 ease-out pointer-events-none"
             style={{
               top: highlightStyle.top,
               height: highlightStyle.height,
