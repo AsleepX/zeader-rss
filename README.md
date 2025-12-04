@@ -13,9 +13,10 @@ A modern, personal RSS reader application built with React and Node.js, designed
 ## Features
 
 - **Smart Feed Management**: Easily subscribe to RSS/Atom feeds and organize them into custom folders to keep your reading list tidy.
-- **Dual View Modes**:
+- **Three View Modes**:
   - **Article View**: A traditional, clean list layout optimized for reading text-heavy articles efficiently.
-  - **Waterfall View**: An immersive grid layout perfect for browsing image-centric feeds like art galleries or photography blogs.
+  - **Photo View**: An immersive waterfall grid layout perfect for browsing image-centric feeds like art galleries or photography blogs.
+  - **Video View**: A dedicated view for video content from platforms like YouTube, with embedded playback support.
 - **Privacy First**: All your data is stored locally on your machine using JSON files. No external servers tracking your reading habits—you own your data.
 - **OPML Support**: Seamlessly migrate your feed subscriptions from other RSS readers using OPML import.
 - **Interactive UI**:
@@ -65,6 +66,15 @@ Master these shortcuts to navigate Zeader like a pro:
 | Key   | Action                            |
 | :---- | :-------------------------------- |
 | `Esc` | Close open modals or details view |
+
+## Mobile Gestures
+
+Zeader is fully responsive and supports mobile devices with intuitive touch gestures:
+
+- **Bottom Navigation Bar**: Tap icons to switch between Article, Photo, and Video views.
+- **Long Press on View Icon**: Opens a bottom sheet showing all feeds and folders for that view type.
+- **Settings Access**: Tap the gear icon in the bottom navigation to access settings, including Add Feed, Import/Export OPML, Clean Up, Custom CSS, and AI configuration.
+- **Swipe Gestures**: Navigate through content naturally with standard touch interactions.
 
 ## Tech Stack
 
