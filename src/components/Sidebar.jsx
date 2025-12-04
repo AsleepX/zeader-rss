@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Layout, Grid, Plus, Trash2, Rss, Image, BookOpen, Settings, Folder, FolderOpen, MoreVertical, Upload, RefreshCw, Download, Edit, Check, Circle, Sparkles, PlaySquare } from 'lucide-react';
+import { Layout, Grid, Plus, Trash2, Rss, Image, BookOpen, Settings, Folder, FolderOpen, MoreVertical, Upload, RefreshCw, Download, Edit, Check, Circle, Sparkles, PlaySquare, Palette } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFeedStore } from '../store/useFeedStore';
 import { useThemeStore } from '../store/useThemeStore';
@@ -59,7 +59,7 @@ const ViewTabDroppable = ({ viewType, icon: Icon, isActive, onClick }) => {
   );
 };
 
-export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder, onImportOpml, onExportOpml, onCleanup }) {
+export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder, onImportOpml, onExportOpml, onCleanup, onCustomCSS }) {
   const { feeds, folders, removeFeed, deleteFolder, moveFeed, updateFeedViewType, updateFolderViewType, selectedSource, selectSource, refreshAllFeeds, isLoading, renameFolder, renameFeed, showUnreadOnly, toggleShowUnreadOnly, markCurrentViewAsRead, toggleFeedFullContent, toggleFolderFullContent } = useFeedStore();
   const { themeColor, setThemeColor } = useThemeStore();
   const [expandedFolders, setExpandedFolders] = useState({});
@@ -370,6 +370,17 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
                   >
                     <Trash2 className="w-4 h-4" />
                     Clean Up
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onCustomCSS();
+                      setIsSettingsOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left text-sm font-medium text-gray-700 transition-colors border-t border-gray-50"
+                  >
+                    <Palette className="w-4 h-4" />
+                    Custom CSS
                   </button>
 
                   <button

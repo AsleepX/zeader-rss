@@ -1,10 +1,10 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Upload, Download, Trash2, Sparkles } from 'lucide-react';
+import { X, Plus, Upload, Download, Trash2, Sparkles, Palette } from 'lucide-react';
 import { useThemeStore } from '../../store/useThemeStore';
 
-export const MobileSettingsSheet = ({ isOpen, onClose, onAddFeed, onImportOpml, onExportOpml, onCleanup, onConfigureAI }) => {
+export const MobileSettingsSheet = ({ isOpen, onClose, onAddFeed, onImportOpml, onExportOpml, onCleanup, onConfigureAI, onCustomCSS }) => {
     const { themeColor, setThemeColor } = useThemeStore();
 
     return createPortal(
@@ -44,6 +44,9 @@ export const MobileSettingsSheet = ({ isOpen, onClose, onAddFeed, onImportOpml, 
                             </button>
                             <button onClick={() => { onCleanup(); onClose(); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl text-left font-medium text-gray-700">
                                 <Trash2 className="w-5 h-5" /> Clean Up
+                            </button>
+                            <button onClick={() => { onCustomCSS(); onClose(); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl text-left font-medium text-gray-700">
+                                <Palette className="w-5 h-5" /> Custom CSS
                             </button>
                             <button onClick={() => { onConfigureAI(); onClose(); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl text-left font-medium text-gray-700">
                                 <Sparkles className="w-5 h-5" /> Configure Z's Soul

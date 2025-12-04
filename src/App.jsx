@@ -13,6 +13,7 @@ import { BottomNavigation } from './components/mobile/BottomNavigation';
 import { BottomSheet } from './components/mobile/BottomSheet';
 import { MobileSettingsSheet } from './components/mobile/MobileSettingsSheet';
 import { CleanupConfirmModal } from './components/CleanupConfirmModal';
+import { CustomCSSModal } from './components/CustomCSSModal';
 import Login from './components/Login';
 import { useFeedStore } from './store/useFeedStore';
 import { useThemeStore } from './store/useThemeStore';
@@ -41,6 +42,9 @@ function App() {
   // Cleanup State
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
+
+  // Custom CSS State
+  const [showCustomCSSModal, setShowCustomCSSModal] = useState(false);
 
   const { feeds, folders, loadFeeds, refreshAllFeeds, isLoading, selectedSource, selectSource } = useFeedStore();
   const { applyTheme } = useThemeStore();
@@ -207,6 +211,7 @@ function App() {
             onImportOpml={() => setIsImportOpmlModalOpen(true)}
             onExportOpml={handleExportOpml}
             onCleanup={() => setShowCleanupConfirm(true)}
+            onCustomCSS={() => setShowCustomCSSModal(true)}
           />
         </div>
       </div>
@@ -258,6 +263,7 @@ function App() {
           onExportOpml={handleExportOpml}
           onCleanup={() => setShowCleanupConfirm(true)}
           onConfigureAI={() => useAIStore.getState().openAISettings()}
+          onCustomCSS={() => setShowCustomCSSModal(true)}
         />
       </div>
 
@@ -282,6 +288,11 @@ function App() {
         onClose={() => setShowCleanupConfirm(false)}
         onConfirm={handleCleanup}
         isCleaning={isCleaning}
+      />
+
+      <CustomCSSModal
+        isOpen={showCustomCSSModal}
+        onClose={() => setShowCustomCSSModal(false)}
       />
 
       <AIResultModal />

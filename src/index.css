@@ -219,21 +219,19 @@ body::-webkit-scrollbar-thumb:hover,
 
 /* Text Selection Style */
 ::selection {
-  background-color: #DEECFF;
+  background-color: rgba(222, 236, 255, 0.6);
   color: inherit;
   text-decoration: underline;
   text-decoration-color: #C3DCFF;
   text-decoration-thickness: 2px;
   text-underline-offset: 5px;
-  box-shadow: 0 -0.15em 0 #DEECFF;
 }
 
 ::-moz-selection {
-  background-color: #DEECFF;
+  background-color: rgba(222, 236, 255, 0.6);
   color: inherit;
   text-decoration: underline;
   text-decoration-color: #C3DCFF;
   text-decoration-thickness: 2px;
   text-underline-offset: 5px;
-  box-shadow: 0 -0.15em 0 #DEECFF;
 }

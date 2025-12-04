@@ -24,12 +24,13 @@ A modern, personal RSS reader application built with React and Node.js, designed
   - **Smooth Animations**: Enjoy a fluid user experience powered by Framer Motion.
 - **Keyboard Navigation**: Browse through your feeds and articles without leaving the keyboard.
 - **AI Assistant**: Built-in AI integration to summarize articles or explain selected text instantly.
+- **Custom CSS**: Inject your own CSS to personalize the appearance of Zeader to your liking.
 
 ## AI Features
 
 - **Z YAML (Gallery View)**: Automatically generates a structured YAML info bar for image galleries, extracting key details like Title, Creator, and Tags.
 - **Z Summary (Article View)**: Automatically generates a concise 3-sentence summary with tags for articles, helping you grasp the core content quickly.
-- **AI Unread Summary (Shortcut: `Z`)**: Analyzes all your unread articles and synthesizes them into an intelligent news digest. It identifies common themes, trends, and connections across articles, presenting key highlights and notable insights. Clickable references let you jump directly to any mentioned article.
+- **AI Unread Summary (Shortcut: `Z` or `]`)**: Analyzes all your unread articles and synthesizes them into an intelligent news digest. It identifies common themes, trends, and connections across articles, presenting key highlights and notable insights. Clickable references let you jump directly to any mentioned article.
 
 
 ## Keyboard Shortcuts
@@ -40,8 +41,10 @@ Master these shortcuts to navigate Zeader like a pro:
 | Key  | Action                                  |
 | :--- | :-------------------------------------- |
 | `[`  | Toggle Sidebar                          |
-| `1`  | Switch to Waterfall View (All Gallerys) |
-| `2`  | Switch to Article View (All Articles)   |
+| `]`  | Toggle AI Unread Summary Panel          |
+| `1`  | Switch to Article View (All Articles)   |
+| `2`  | Switch to Photo View (All Photos)       |
+| `3`  | Switch to Video View (All Videos)       |
 
 ### Article View
 | Key       | Action                                |
@@ -49,10 +52,10 @@ Master these shortcuts to navigate Zeader like a pro:
 | `↑` / `↓` | Navigate through the article list     |
 | `Enter`   | Open the selected article             |
 | `Space`   | Mark current as read and move to next |
-| `Z`       | AI Unread Summary                     |
+| `Z` / `]` | Toggle AI Unread Summary Panel        |
 
 
-### Waterfall View
+### Photo / Video View
 | Key                   | Action                          |
 | :-------------------- | :------------------------------ |
 | `↑` / `↓` / `←` / `→` | Navigate through the grid cards |

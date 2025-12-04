@@ -675,7 +675,7 @@ export function ArticleView({ feeds }) {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [selectedArticle]);
 
-  // Handle 'z' key for AI Summary Panel
+  // Handle 'z' or ']' key for AI Summary Panel
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Ignore shortcuts if user is typing in an input or textarea
@@ -683,8 +683,8 @@ export function ArticleView({ feeds }) {
         return;
       }
 
-      // Toggle AI Summary Panel on 'z' key press
-      if (e.key === 'z' || e.key === 'Z') {
+      // Toggle AI Summary Panel on 'z' or ']' key press
+      if (e.key === 'z' || e.key === 'Z' || e.key === ']') {
         setIsAISummaryOpen(prev => !prev);
       }
     };

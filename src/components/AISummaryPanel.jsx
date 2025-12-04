@@ -331,17 +331,17 @@ Use Markdown formatting. Keep the response well-organized and scannable.`;
                                 <button
                                     onClick={generateSummary}
                                     disabled={isGenerating}
-                                    className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                                    className="p-2 text-gray-400 hover:text-primary-600 rounded-full hover:bg-primary-50 transition-all disabled:opacity-50"
                                     title="Regenerate"
                                 >
                                     <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
                                 </button>
                                 <button
                                     onClick={handleClose}
-                                    className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                                    className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-all"
                                     title="Close"
                                 >
-                                    <X className="w-5 h-5" />
+                                    <X className="w-4 h-4" />
                                 </button>
                             </div>
                         </div>
@@ -379,7 +379,7 @@ Use Markdown formatting. Keep the response well-organized and scannable.`;
                     >
                         {error ? (
                             <div className="flex flex-col items-center justify-center h-full text-center">
-                                <div className="p-4 bg-red-50 text-red-600 rounded-lg mb-4">
+                                <div className="p-4 bg-primary-50 text-primary-600 rounded-lg mb-4">
                                     <p className="text-sm">{error}</p>
                                 </div>
                                 <button
