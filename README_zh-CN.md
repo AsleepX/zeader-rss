@@ -190,9 +190,13 @@ Fork 项目：在本项目 GitHub 页面右上角点击 Fork 按钮，将仓库�
 
 环境变量 (Variables)：点击 Variables 标签页。
 
-- 键 (Key): PASSWORD
+- 键 (Key): `DATA_DIR`
 
-- 值 (Value): 设置你的访问密码。
+  - 值 (Value): `/app/data`（告诉应用使用挂载卷来存储数据）。
+
+- 键 (Key): `PASSWORD`
+
+  - 值 (Value): 设置你的访问密码。
 
 生成域名：
 

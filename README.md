@@ -190,9 +190,13 @@ Volume (Storage): Click on the Settings tab -> Volumes. Click "Add Volume".
 
 Environment Variables: Click on the Variables tab.
 
-- Key: PASSWORD
+- Key: `DATA_DIR`
 
-- Value: Set your desired access password.
+  - Value: `/app/data` (This tells the app to use the mounted volume for data storage).
+
+- Key: `PASSWORD`
+
+  - Value: Set your desired access password.
 
 Enable Networking:
 
