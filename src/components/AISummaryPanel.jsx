@@ -308,16 +308,16 @@ Use Markdown formatting. Keep the response well-organized and scannable.`;
                     animate={{ width: 400, opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }}
                     transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                    className="h-full bg-white border-l border-gray-200 flex flex-col overflow-hidden flex-shrink-0"
+                    className="h-full bg-gray-50 border-l border-gray-200 flex flex-col overflow-hidden flex-shrink-0"
                 >
                     {/* Inject scrollbar hiding styles */}
                     <style>{scrollbarHideStyles}</style>
 
                     {/* Header */}
                     <div className="flex-shrink-0">
-                        <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-primary-50 to-white">
+                        <div className="flex items-center justify-between px-5 py-4">
                             <div className="flex items-center gap-2">
-                                <div className="p-2 bg-primary-100 rounded-lg">
+                                <div className="p-2 bg-gray-50 rounded-lg">
                                     <Sparkles className="w-5 h-5 text-primary-600" />
                                 </div>
                                 <div>
@@ -327,7 +327,7 @@ Use Markdown formatting. Keep the response well-organized and scannable.`;
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
                                 <button
                                     onClick={generateSummary}
                                     disabled={isGenerating}
@@ -347,7 +347,7 @@ Use Markdown formatting. Keep the response well-organized and scannable.`;
                         </div>
 
                         {/* Progress Bar - Jelly style */}
-                        <div className="h-1 bg-gray-100 relative overflow-hidden">
+                        <div className="h-1 bg-gray-50 relative overflow-hidden">
                             <motion.div
                                 className="absolute top-0 left-0 h-full rounded-r-full"
                                 style={{
@@ -357,7 +357,7 @@ Use Markdown formatting. Keep the response well-organized and scannable.`;
                                 }}
                                 initial={{ width: 0 }}
                                 animate={{ width: `${scrollProgress}%` }}
-                                transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                                transition={{ duration: 0.15, ease: 'easeOut' }}
                             />
                             {/* Jelly shine effect */}
                             <motion.div
@@ -367,7 +367,7 @@ Use Markdown formatting. Keep the response well-organized and scannable.`;
                                     background: 'linear-gradient(180deg, rgba(255,255,255,0.5) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)',
                                 }}
                                 animate={{ width: `${scrollProgress}%` }}
-                                transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                                transition={{ duration: 0.15, ease: 'easeOut' }}
                             />
                         </div>
                     </div>

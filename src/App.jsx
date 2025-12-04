@@ -211,7 +211,7 @@ function App() {
         </div>
       </div>
 
-      <main className="flex-1 flex flex-col h-screen relative min-w-0 overflow-x-hidden">
+      <main className="flex-1 flex flex-col h-screen relative min-w-0 overflow-x-hidden bg-white">
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="hidden md:block absolute top-4 left-4 z-50 p-2 text-gray-500 hover:bg-gray-100 bg-white/80 backdrop-blur-sm rounded-lg transition-all duration-300 border border-gray-200 opacity-0 hover:opacity-100"

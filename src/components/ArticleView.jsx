@@ -116,7 +116,7 @@ function ArticleList({ articles, onSelectArticle, initialSelectedId, onMarkAsRea
     <div className="max-w-5xl mx-auto relative pt-6 pb-6">
       {/* Highlight Background */}
       <div
-        className="absolute left-0 w-full bg-gray-100 rounded-lg transition-all duration-200 ease-out pointer-events-none overflow-hidden"
+        className="absolute left-0 w-full bg-gray-50 rounded-lg transition-all duration-200 ease-out pointer-events-none overflow-hidden"
         style={{
           top: highlightStyle.top,
           height: highlightStyle.height,

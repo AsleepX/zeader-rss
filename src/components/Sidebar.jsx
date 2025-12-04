@@ -44,8 +44,8 @@ const ViewTabDroppable = ({ viewType, icon: Icon, isActive, onClick }) => {
       onClick={onClick}
       className={clsx(
         "flex-1 flex items-center justify-center py-2 rounded-lg transition-all relative group",
-        isActive ? "text-primary-600 bg-primary-50" : "text-gray-400 hover:text-gray-600 hover:bg-gray-50",
-        isOver && "ring-2 ring-primary-200 bg-primary-50"
+        isActive ? "text-primary-600 bg-white" : "text-gray-400 hover:text-gray-600 hover:bg-gray-200/50",
+        isOver && "ring-2 ring-primary-200 bg-white"
       )}
       title={`Switch to ${viewType} view`}
     >
@@ -227,7 +227,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="w-[240px] h-screen bg-white border-r border-gray-100 flex flex-col flex-shrink-0 font-sans relative">
+      <div className="w-[240px] h-screen bg-gray-50 border-r border-gray-200 flex flex-col flex-shrink-0 font-sans relative">
         <div className="px-6 pt-4 pb-2">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl text-gray-900 flex items-center gap-2 tracking-tight font-merriweather">
@@ -266,7 +266,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
           </h2>
 
           {/* View Switcher */}
-          <div className="flex items-center gap-2 mb-4 bg-gray-50/50 p-1 rounded-xl">
+          <div className="flex items-center gap-1 mb-4 bg-gray-200/50 p-1 rounded-xl">
             <ViewTabDroppable
               viewType="article"
               icon={BookOpen}
@@ -305,7 +305,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
         </RootDroppable>
 
         {/* Settings Button & Menu */}
-        <div className="p-4 border-t border-gray-50 bg-white absolute bottom-0 w-full">
+        <div className="p-4 border-t border-gray-200 bg-gray-50 absolute bottom-0 w-full">
           <div className="relative">
             <AnimatePresence>
               {isSettingsOpen && (
@@ -389,8 +389,8 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
               className={clsx(
                 "w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 focus:outline-none focus:ring-0 border",
                 isSettingsOpen
-                  ? "bg-gray-100 text-gray-900 border-transparent"
-                  : "bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-900 border-gray-200"
+                  ? "bg-gray-50 text-gray-900 border-transparent"
+                  : "bg-gray-50 hover:bg-gray-50 text-gray-600 hover:text-gray-900 border-gray-200"
               )}
             >
               <div className="flex items-center gap-3">
