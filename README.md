@@ -4,14 +4,24 @@ English | [简体中文](./README_zh-CN.md)
 
 A modern, personal RSS reader application built with React and Node.js, designed for privacy, performance, and a great user experience.
 
-![Zeader Screenshot](images/zeader_Gallery.png)
-
-![Zeader Screenshot](images/zeader_Article1.png)
-
-![Zeader Screenshot](images/zeader_Article2.png)
+<table>
+  <tr>
+    <td><img src="images/Article1.png" alt="Article View 1" width="400"/></td>
+    <td><img src="images/Article2.png" alt="Article View 2" width="400"/></td>
+  </tr>
+  <tr>
+    <td><img src="images/Photo1.png" alt="Photo View 1" width="400"/></td>
+    <td><img src="images/Photo2.png" alt="Photo View 2" width="400"/></td>
+  </tr>
+  <tr>
+    <td><img src="images/Video1.png" alt="Video View 1" width="400"/></td>
+    <td><img src="images/Video2.png" alt="Video View 2" width="400"/></td>
+  </tr>
+</table>
 
 ## Features
 
+- **Cross-Platform Support**: Once deployed to a server, access Zeader from any desktop or mobile device via browser, with a fully responsive design that adapts to any screen size.
 - **Smart Feed Management**: Easily subscribe to RSS/Atom feeds and organize them into custom folders to keep your reading list tidy.
 - **Three View Modes**:
   - **Article View**: A traditional, clean list layout optimized for reading text-heavy articles efficiently.
