@@ -217,19 +217,24 @@ export const useFeedStore = create((set, get) => ({
 
                 const category = getCategoryFromUrl(url);
                 if (category) {
-                    const { feeds } = get();
-                    const sameCategoryFeeds = feeds.filter(f => getCategoryFromUrl(f.url) === category);
+                    const { feeds, folders } = get();
+                    // Only consider feeds with the SAME viewType for auto-grouping
+                    const sameCategoryFeeds = feeds.filter(f => 
+                        getCategoryFromUrl(f.url) === category && f.viewType === viewType
+                    );
 
                     if (sameCategoryFeeds.length > 0) {
+                        // Find existing folder that contains same-category, same-viewType feeds
                         const existingFolderId = sameCategoryFeeds.find(f => f.folderId)?.folderId;
 
                         if (existingFolderId) {
                             targetFolderId = existingFolderId;
                         } else {
-                            // Create new folder
+                            // Create new folder with the appropriate viewType
                             newFolder = {
                                 id: uuidv4(),
                                 name: category.charAt(0).toUpperCase() + category.slice(1),
+                                viewType, // Set folder viewType to match the feed
                                 createdAt: new Date().toISOString()
                             };
                             targetFolderId = newFolder.id;

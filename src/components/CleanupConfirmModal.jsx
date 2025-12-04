@@ -1,12 +1,24 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { motion } from 'framer-motion';
 
 export const CleanupConfirmModal = ({ isOpen, onClose, onConfirm, isCleaning }) => {
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={onClose}
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Clean Up Old Items</h3>
                 <p className="text-gray-600 mb-6">
                     This will remove all feed items older than 30 days. This action cannot be undone.
@@ -27,7 +39,7 @@ export const CleanupConfirmModal = ({ isOpen, onClose, onConfirm, isCleaning }) 
                         {isCleaning ? 'Cleaning...' : 'Confirm Clean Up'}
                     </button>
                 </div>
-            </div>
+            </motion.div>
         </div>,
         document.body
     );

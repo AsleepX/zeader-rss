@@ -195,12 +195,26 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
     return 'mixed';
   };
 
+  // Check if a folder has feeds matching the current view
+  const folderHasFeedsForView = (folder, view) => {
+    const folderFeeds = feeds.filter(f => f.folderId === folder.id);
+    return folderFeeds.some(f => f.viewType === view);
+  };
+
   // Filter items based on current view
+  // Show folders that either:
+  // 1. Have the matching viewType (or 'waterfall' which maps to 'photo')
+  // 2. OR contain feeds that match the current view
   const currentFolders = folders.filter(f => {
     const type = getFolderType(f);
-    if (currentView === 'photo') return type === 'photo';
-    if (currentView === 'article') return type === 'article';
-    if (currentView === 'video') return type === 'video';
+    const normalizedType = type === 'waterfall' ? 'photo' : type;
+    
+    // Folder's own viewType matches current view
+    if (normalizedType === currentView) return true;
+    
+    // Or folder contains feeds matching current view (for mixed-type folders)
+    if (folderHasFeedsForView(f, currentView)) return true;
+    
     return false;
   });
 
@@ -208,7 +222,8 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
 
   const renderFolder = (folder) => {
     const isExpanded = expandedFolders[folder.id];
-    const folderFeeds = feeds.filter(f => f.folderId === folder.id);
+    // Only show feeds that match the current view type within this folder
+    const folderFeeds = feeds.filter(f => f.folderId === folder.id && f.viewType === currentView);
 
     return (
       <div key={folder.id}>
