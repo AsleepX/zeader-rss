@@ -1,8 +1,10 @@
 import React, { useRef } from 'react';
 import { BookOpen, Image, PlaySquare, Settings } from 'lucide-react';
 import clsx from 'clsx';
+import { useFeedStore } from '../../store/useFeedStore';
 
 export const BottomNavigation = ({ currentView, setCurrentView, onOpenSettings, onLongPressView }) => {
+    const { selectSource } = useFeedStore();
     const longPressTimer = useRef(null);
     const isLongPress = useRef(false);
 
@@ -18,6 +20,11 @@ export const BottomNavigation = ({ currentView, setCurrentView, onOpenSettings, 
             },
             onTouchEnd: (e) => {
                 if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                // Reset isLongPress after a short delay to prevent click firing after long press
+                // but allow subsequent normal clicks to work
+                setTimeout(() => {
+                    isLongPress.current = false;
+                }, 100);
             },
             onContextMenu: (e) => {
                 e.preventDefault();
@@ -29,6 +36,7 @@ export const BottomNavigation = ({ currentView, setCurrentView, onOpenSettings, 
                     return;
                 }
                 setCurrentView(viewType);
+                selectSource('all');
             }
         };
     };

@@ -140,6 +140,71 @@ body::-webkit-scrollbar-thumb:hover,
   margin-bottom: 0.3em;
 }
 
+/* Article images - centered with rounded corners */
+.prose-lg img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 0.2rem;
+}
+
+/* Only add spacing between consecutive images */
+.prose-lg img + img,
+.prose-lg p > img + img,
+.prose-lg figure + figure img,
+.prose-lg p + p > img:only-child {
+  margin-top: 1.5em;
+}
+
+/* Mobile responsive styles for article content */
+@media (max-width: 768px) {
+  .prose-lg {
+    font-size: 17px;
+  }
+
+  .prose-lg p,
+  .prose-lg li {
+    font-size: 17px;
+    line-height: 1.6;
+  }
+
+  .prose-lg h1 {
+    font-size: 1.75em;
+  }
+
+  .prose-lg h2 {
+    font-size: 1.5em;
+  }
+
+  .prose-lg h3 {
+    font-size: 1.25em;
+  }
+
+  .prose-lg h4 {
+    font-size: 1.1em;
+  }
+
+  /* Limit image height on mobile, auto-adjust width to maintain aspect ratio */
+  .prose-lg img {
+    max-height: 32vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 0.2rem;
+  }
+
+  /* Only add spacing between consecutive images on mobile */
+  .prose-lg img + img,
+  .prose-lg p > img + img,
+  .prose-lg figure + figure img,
+  .prose-lg p + p > img:only-child {
+    margin-top: 1.25em;
+  }
+}
+
 .prose-lg a {
   color: #0D1E8E;
   text-decoration: underline;

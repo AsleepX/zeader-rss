@@ -239,7 +239,7 @@ export function PhotoView({ feeds }) {
 
   if (allItems.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-400">
+      <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4 text-center">
         <p>No articles found. Add some feeds to get started!</p>
       </div>
     );

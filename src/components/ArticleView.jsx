@@ -617,9 +617,9 @@ Summary: 三句话摘要
 
         {/* Article Content */}
         <article ref={contentRef} className="prose prose-lg prose-slate max-w-none font-serif prose-headings:font-serif prose-a:text-primary-600 prose-img:rounded-xl [&_iframe]:w-full [&_iframe]:!h-auto [&_iframe]:!aspect-[3/2] relative">
-          {/* Highlight Line */}
+          {/* Highlight Line - Hidden on mobile */}
           <div
-            className="absolute -left-6 w-[3.5px] bg-[#76B2ED] transition-all duration-200 ease-out pointer-events-none"
+            className="absolute -left-6 w-[3.5px] bg-[#76B2ED] transition-all duration-200 ease-out pointer-events-none hidden md:block"
             style={{
               top: highlightStyle.top,
               height: highlightStyle.height,
@@ -741,7 +741,7 @@ export function ArticleView({ feeds }) {
   if (allItems.length === 0) {
     return (
       <div className="flex h-full">
-        <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+        <div className="flex-1 flex flex-col items-center justify-center text-gray-400 px-4 text-center">
           <p>No articles found. Add some feeds to get started!</p>
         </div>
         {/* AI Summary Panel */}

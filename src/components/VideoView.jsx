@@ -237,7 +237,7 @@ export function VideoView({ feeds }) {
 
     if (allItems.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4 text-center">
                 <p>No videos found. Add some video feeds to get started!</p>
             </div>
         );
