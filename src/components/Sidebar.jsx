@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Layout, Grid, Plus, Trash2, Rss, Image, BookOpen, Settings, Folder, FolderOpen, MoreVertical, Upload, RefreshCw, Download, Edit, Check, Circle, Sparkles, PlaySquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFeedStore } from '../store/useFeedStore';
@@ -66,12 +66,24 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeDragFeed, setActiveDragFeed] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
+  const settingsRef = useRef(null);
 
   useEffect(() => {
     const handleClick = () => setContextMenu(null);
     window.addEventListener('click', handleClick);
     return () => window.removeEventListener('click', handleClick);
   }, []);
+
+  // 点击外部区域关闭 Settings 弹窗
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isSettingsOpen && settingsRef.current && !settingsRef.current.contains(event.target)) {
+        setIsSettingsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isSettingsOpen]);
 
   const handleContextMenu = (e, type, id = null, name = null) => {
     e.preventDefault();
@@ -306,7 +318,7 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
 
         {/* Settings Button & Menu */}
         <div className="p-4 border-t border-gray-200 bg-gray-50 absolute bottom-0 w-full">
-          <div className="relative">
+          <div className="relative" ref={settingsRef}>
             <AnimatePresence>
               {isSettingsOpen && (
                 <motion.div
@@ -316,36 +328,39 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
                   transition={{ duration: 0.2, ease: "easeOut" }}
                   className="absolute bottom-full left-0 w-full mb-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden"
                 >
-                  <button
-                    onClick={() => {
-                      onAddFeed();
-                      setIsSettingsOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left text-sm font-medium text-gray-700 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add New Feed
-                  </button>
-                  <button
-                    onClick={() => {
-                      onImportOpml();
-                      setIsSettingsOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left text-sm font-medium text-gray-700 transition-colors border-t border-gray-50"
-                  >
-                    <Upload className="w-4 h-4" />
-                    Import OPML
-                  </button>
-                  <button
-                    onClick={() => {
-                      onExportOpml();
-                      setIsSettingsOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left text-sm font-medium text-gray-700 transition-colors border-t border-gray-50"
-                  >
-                    <Download className="w-4 h-4" />
-                    Export OPML
-                  </button>
+                  {/* Quick Action Buttons Row */}
+                  <div className="flex items-center gap-1 px-4 py-3">
+                    <button
+                      onClick={() => {
+                        onAddFeed();
+                        setIsSettingsOpen(false);
+                      }}
+                      className="flex-1 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg transition-colors"
+                      title="Add New Feed"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        onImportOpml();
+                        setIsSettingsOpen(false);
+                      }}
+                      className="flex-1 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg transition-colors"
+                      title="Import OPML"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        onExportOpml();
+                        setIsSettingsOpen(false);
+                      }}
+                      className="flex-1 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg transition-colors"
+                      title="Export OPML"
+                    >
+                      <Upload className="w-4 h-4" />
+                    </button>
+                  </div>
                   <button
                     onClick={() => {
                       onCleanup();

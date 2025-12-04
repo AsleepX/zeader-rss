@@ -5,8 +5,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 优先使用环境变量 DATA_DIR，如果未设置则使用默认的项目目录
-// 在 Zeabur 上设置环境变量 DATA_DIR=/app/data 来使用挂载的持久化存储
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..', 'data');
 const DATA_FILE = path.join(DATA_DIR, 'feeds.json');
 const STORAGE_DIR = path.join(DATA_DIR, 'storage');

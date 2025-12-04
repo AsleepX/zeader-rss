@@ -247,6 +247,7 @@ function App() {
           onClose={() => setIsBottomSheetOpen(false)}
           viewType={bottomSheetViewType}
           title={bottomSheetViewType === 'article' ? 'Articles' : bottomSheetViewType === 'photo' ? 'Photos' : 'Videos'}
+          setCurrentView={setCurrentView}
         />
 
         <MobileSettingsSheet

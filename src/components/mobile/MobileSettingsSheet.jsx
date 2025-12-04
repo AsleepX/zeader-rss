@@ -37,10 +37,10 @@ export const MobileSettingsSheet = ({ isOpen, onClose, onAddFeed, onImportOpml, 
                                 <Plus className="w-5 h-5" /> Add New Feed
                             </button>
                             <button onClick={() => { onImportOpml(); onClose(); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl text-left font-medium text-gray-700">
-                                <Upload className="w-5 h-5" /> Import OPML
+                                <Download className="w-5 h-5" /> Import OPML
                             </button>
                             <button onClick={() => { onExportOpml(); onClose(); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl text-left font-medium text-gray-700">
-                                <Download className="w-5 h-5" /> Export OPML
+                                <Upload className="w-5 h-5" /> Export OPML
                             </button>
                             <button onClick={() => { onCleanup(); onClose(); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl text-left font-medium text-gray-700">
                                 <Trash2 className="w-5 h-5" /> Clean Up

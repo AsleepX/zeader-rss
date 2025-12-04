@@ -7,7 +7,7 @@ import { FolderItem } from '../sidebar/FolderItem';
 import { useFeedStore } from '../../store/useFeedStore';
 import { DndContext } from '@dnd-kit/core';
 
-export const BottomSheet = ({ isOpen, onClose, viewType, title }) => {
+export const BottomSheet = ({ isOpen, onClose, viewType, title, setCurrentView }) => {
     const { feeds, folders, removeFeed, deleteFolder, selectSource, selectedSource } = useFeedStore();
     const [expandedFolders, setExpandedFolders] = useState({});
 
@@ -78,6 +78,7 @@ export const BottomSheet = ({ isOpen, onClose, viewType, title }) => {
                                             isSelected={selectedSource.type === 'folder' && selectedSource.id === folder.id}
                                             onSelect={() => {
                                                 selectSource('folder', folder.id);
+                                                setCurrentView(viewType);
                                                 onClose();
                                             }}
                                             dragEnabled={false}
@@ -89,6 +90,7 @@ export const BottomSheet = ({ isOpen, onClose, viewType, title }) => {
                                                     selectedSource={selectedSource}
                                                     onSelectFeed={(id) => {
                                                         selectSource('feed', id);
+                                                        setCurrentView(viewType);
                                                         onClose();
                                                     }}
                                                     dragEnabled={false}
@@ -104,6 +106,7 @@ export const BottomSheet = ({ isOpen, onClose, viewType, title }) => {
                                     selectedSource={selectedSource}
                                     onSelectFeed={(id) => {
                                         selectSource('feed', id);
+                                        setCurrentView(viewType);
                                         onClose();
                                     }}
                                     dragEnabled={false}

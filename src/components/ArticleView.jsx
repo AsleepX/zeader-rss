@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
-import { Clock, ChevronLeft, Play, Share2, Globe, Sparkles, Loader2 } from 'lucide-react';
+import { Clock, ChevronLeft, Play, Share2, Globe, Sparkles, Loader2, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFeedStore } from '../store/useFeedStore';
@@ -288,9 +288,9 @@ function ArticleDetail({ article, onBack }) {
    - Tags: 语言必须为 ${language}。
 
 # Output Schema (YAML)
-Title: [标题]
-Tags: [标签 1, 标签 2...]
-Summary: [三句话摘要]
+Title: 翻译后的标题
+Tags: 标签1, 标签2, 标签3
+Summary: 三句话摘要
 `;
         const result = await generateText(prompt);
 
@@ -302,9 +302,10 @@ Summary: [三句话摘要]
           if (match) {
             const key = match[1].trim();
             const value = match[2].trim();
-            // Handle Tags as array
+            // Handle Tags as array, remove brackets if present
             if (key === 'Tags') {
-              parsedData[key] = value.split(',').map(t => t.trim());
+              const cleanValue = value.replace(/^\[|\]$/g, '');
+              parsedData[key] = cleanValue.split(',').map(t => t.trim().replace(/^\[|\]$/g, ''));
             } else {
               parsedData[key] = value;
             }
@@ -410,8 +411,21 @@ Summary: [三句话摘要]
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Ignore shortcuts if user is typing in an input or textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+        return;
+      }
+
       if (e.key === 'Escape') {
         onBack();
+        return;
+      }
+
+      // Open original article on 'o' key press
+      if (e.key === 'o' || e.key === 'O') {
+        if (article.link) {
+          window.open(article.link, '_blank', 'noopener,noreferrer');
+        }
         return;
       }
 
@@ -436,7 +450,7 @@ Summary: [三句话摘要]
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, contentBlocks.length]);
+  }, [onBack, contentBlocks.length, article.link]);
 
   // Auto-scroll selected block to center
   useEffect(() => {
@@ -518,6 +532,7 @@ Summary: [三句话摘要]
           onClick={onBack}
           className="ml-16 p-2 text-gray-500 hover:bg-gray-100 bg-white/80 backdrop-blur-sm rounded-lg transition-all duration-300 border border-gray-200 opacity-0 hover:opacity-100"
           aria-label="Go back"
+          title="Go back (Esc)"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -537,16 +552,27 @@ Summary: [三句话摘要]
             {article.title}
           </h1>
 
-          <div className="flex items-center gap-3 text-sm text-gray-500 border-t border-b border-gray-100 py-4">
-            {article.author && (
-              <>
-                <span className="font-medium text-gray-900">{article.author}</span>
-                <span>•</span>
-              </>
-            )}
-            <span>{readTime} read</span>
-            <span>•</span>
-            <span>{format(date, 'MMM d, yyyy h:mm a')}</span>
+          <div className="flex items-center justify-between text-sm text-gray-500 border-t border-b border-gray-100 py-4">
+            <div className="flex items-center gap-3">
+              {article.author && (
+                <>
+                  <span className="font-medium text-gray-900">{article.author}</span>
+                  <span>•</span>
+                </>
+              )}
+              <span>{readTime} read</span>
+              <span>•</span>
+              <span>{format(date, 'MMM d, yyyy h:mm a')}</span>
+            </div>
+            <a
+              href={article.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-primary-600 transition-colors"
+              title="View original (o)"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
           </div>
         </header>
 
@@ -621,18 +647,6 @@ Summary: [三句话摘要]
             <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
           )}
         </article>
-
-        {/* Footer */}
-        <div className="mt-12 pt-8 border-t border-gray-100 flex justify-center">
-          <a
-            href={article.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-gray-500 hover:text-primary-600 hover:underline"
-          >
-            View original article
-          </a>
-        </div>
       </div>
     </div>
   );

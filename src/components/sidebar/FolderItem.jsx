@@ -40,7 +40,7 @@ export const FolderItem = ({ folder, isExpanded, toggleFolder, onDelete, childre
                 <div
                     className={clsx(
                         "group flex items-center justify-between px-4 py-2 rounded-lg cursor-pointer transition-colors",
-                        isSelected ? "bg-primary-50 text-primary-600" : "hover:bg-gray-50 text-gray-600 hover:text-gray-900"
+                        isSelected ? "bg-primary-400/10 text-primary-600" : "hover:bg-gray-50 text-gray-600 hover:text-gray-900"
                     )}
                     onClick={(e) => {
                         e.stopPropagation();

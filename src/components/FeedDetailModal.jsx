@@ -72,13 +72,13 @@ export function FeedDetailModal({ item, onClose, originRect }) {
    - **其他所有字段（Summary, Tags, Meta等）**: 语言必须为 ${language}。
 
 # Output Schema (YAML)
-Title: [标题]
-ID: [番号/标识符，如果没有则不显示]
-Creator: [演员/画师/模特]
-Date: [YYYY-MM-DD]
-Tags: [标签 1, 标签 2...]
-Meta: [分辨率/张数/大小/时长等参数]
-Summary: [一句话简介]
+Title: 翻译后的标题
+ID: 番号或标识符（如果没有则不显示此行）
+Creator: 演员/画师/模特
+Date: YYYY-MM-DD
+Tags: 标签1, 标签2, 标签3
+Meta: 分辨率/张数/大小/时长等参数
+Summary: 一句话简介
 
 # Example Output
 Title: KIBD-336 因为你态度傲慢，所以才会有这样的下场
@@ -99,9 +99,10 @@ Summary: 渚光希与久留木玲出演的AV作品
                     if (match) {
                         const key = match[1].trim();
                         const value = match[2].trim();
-                        // Handle Tags as array
+                        // Handle Tags as array, remove brackets if present
                         if (key === 'Tags') {
-                            parsedData[key] = value.split(',').map(t => t.trim());
+                            const cleanValue = value.replace(/^\[|\]$/g, '');
+                            parsedData[key] = cleanValue.split(',').map(t => t.trim().replace(/^\[|\]$/g, ''));
                         } else {
                             parsedData[key] = value;
                         }

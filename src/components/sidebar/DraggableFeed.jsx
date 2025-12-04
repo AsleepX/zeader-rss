@@ -27,7 +27,7 @@ export const DraggableFeed = ({ feed, onRemove, isSelected, onClick, onContextMe
                 "group flex items-center justify-between px-3.5 py-2 rounded-lg transition-colors cursor-grab active:cursor-grabbing",
                 dragEnabled && "touch-none",
                 isDragging ? "opacity-30" : "",
-                isSelected ? "bg-primary-50 text-primary-600" : "hover:bg-gray-50"
+                isSelected ? "bg-primary-100 text-primary-700" : "hover:bg-gray-50"
             )}
         >
             <div className="flex items-center gap-3 overflow-hidden">

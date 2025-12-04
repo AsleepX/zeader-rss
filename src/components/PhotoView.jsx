@@ -327,7 +327,7 @@ export function PhotoView({ feeds }) {
 
 
   return (
-    <div className="p-6 bg-gray-50 min-h-full">
+    <div className="p-6 bg-white min-h-full">
       <div className="flex gap-4 items-start">
         {columns.map((colItems, colIndex) => (
           <div key={colIndex} className="flex-1 space-y-4 min-w-0">
