@@ -156,6 +156,12 @@ Summary: 渚光希与久留木玲出演的AV作品
             }
         });
 
+        // Remove iframes from content to prevent broken embeds on mobile
+        const iframes = div.querySelectorAll('iframe');
+        iframes.forEach(iframe => {
+            iframe.remove();
+        });
+
         return { __html: div.innerHTML };
     };
 
@@ -212,12 +218,12 @@ Summary: 渚光希与久留木玲出演的AV作品
                 className="relative w-full sm:w-[70vw] lg:w-[40vw] max-w-[800px] h-[calc(100vh-4rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden pointer-events-auto"
             >
                 {/* Header */}
-                <div className="flex items-start justify-between p-6 border-b border-gray-100 bg-white z-10">
-                    <div className="pr-8">
-                        <h2 className="text-2xl font-bold text-gray-900 leading-tight mb-2">
+                <div className="flex items-start justify-between p-4 sm:p-6 border-b border-gray-100 bg-white z-10">
+                    <div className="pr-8 min-w-0">
+                        <h2 className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight mb-1 sm:mb-2 line-clamp-3">
                             {item.title}
                         </h2>
-                        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500">
                             <div className="flex items-center gap-1.5">
                                 <User className="w-4 h-4" />
                                 <span className="font-medium text-gray-700">{item.author || item.creator || item.feedTitle}</span>

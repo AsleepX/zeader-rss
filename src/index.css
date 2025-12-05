@@ -185,7 +185,8 @@ body::-webkit-scrollbar-thumb:hover,
   }
 
   /* Limit image height on mobile, auto-adjust width to maintain aspect ratio */
-  .prose-lg img {
+  /* Only apply to ArticleDetail view, not PhotoView/FeedDetailModal */
+  .article-detail-content.prose-lg img {
     max-height: 32vh;
     width: auto;
     height: auto;
@@ -197,10 +198,10 @@ body::-webkit-scrollbar-thumb:hover,
   }
 
   /* Only add spacing between consecutive images on mobile */
-  .prose-lg img + img,
-  .prose-lg p > img + img,
-  .prose-lg figure + figure img,
-  .prose-lg p + p > img:only-child {
+  .article-detail-content.prose-lg img + img,
+  .article-detail-content.prose-lg p > img + img,
+  .article-detail-content.prose-lg figure + figure img,
+  .article-detail-content.prose-lg p + p > img:only-child {
     margin-top: 1.25em;
   }
 }
