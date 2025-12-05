@@ -7,6 +7,9 @@ import { useAIStore } from '../store/useAIStore';
 import { api } from '../utils/api';
 import { AISummaryPanel } from './AISummaryPanel';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { AnnotationPopover } from './AnnotationPopover';
+import { AnnotationSideNote } from './AnnotationSideNote';
+import { generateFootnotesSection } from '../utils/textUtils';
 
 // Helper to extract the first image from HTML content
 const extractImage = (html) => {
@@ -208,7 +211,7 @@ const wrapTextWithMark = (html) => {
   // Parse HTML and wrap text nodes with <mark> tags
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
-  
+
   const wrapTextNodes = (node) => {
     if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
       const mark = doc.createElement('mark');
@@ -218,14 +221,14 @@ const wrapTextWithMark = (html) => {
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       // Skip certain elements
       const tagName = node.tagName.toLowerCase();
-      if (tagName === 'mark' || tagName === 'img' || tagName === 'br' || tagName === 'hr') {
+      if (tagName === 'mark' || tagName === 'img' || tagName === 'br' || tagName === 'hr' || (tagName === 'span' && node.className === 'zeader-annotation-marker')) {
         return;
       }
       // Process children (make a copy of childNodes since we're modifying the DOM)
       Array.from(node.childNodes).forEach(child => wrapTextNodes(child));
     }
   };
-  
+
   wrapTextNodes(doc.body);
   return doc.body.innerHTML;
 };
@@ -233,13 +236,14 @@ const wrapTextWithMark = (html) => {
 const MemoizedContentBlock = React.memo(({ html, translation, isTranslating, isHighlighted }) => {
   // Wrap text content with <mark> tags when highlighted for Obsidian Clipper compatibility
   const wrappedHtml = isHighlighted ? wrapTextWithMark(html) : html;
-  
+
   return (
     <div>
       <div className="relative">
-        <div 
+        <div
+          data-content-container="true"
           className={isHighlighted ? 'zeader-block-highlight' : ''}
-          dangerouslySetInnerHTML={{ __html: wrappedHtml }} 
+          dangerouslySetInnerHTML={{ __html: wrappedHtml }}
         />
         {isTranslating && (
           <span className="inline-flex items-center ml-2 text-primary-500">
@@ -273,6 +277,18 @@ function ArticleDetail({ article, onBack }) {
   // Highlight state (temporary, not persisted)
   const [highlightedBlocks, setHighlightedBlocks] = useState(new Set()); // Set of highlighted block indices
   const [selectedHighlightMark, setSelectedHighlightMark] = useState(null); // Currently selected highlight mark element for unhighlighting
+
+  // Annotation State
+  const [annotations, setAnnotations] = useState([]);
+  const [popoverState, setPopoverState] = useState({
+    isOpen: false,
+    position: { top: 0, left: 0 },
+    blockIndex: -1,
+    type: 'selection',
+    editingAnnotationId: null,  // ID of annotation being edited
+    initialText: ''  // Initial text for editing
+  });
+  const pendingMarkRef = useRef(null); // Ref to the newly created mark before saving annotation
 
   useLayoutEffect(() => {
     const updateHighlight = () => {
@@ -314,7 +330,7 @@ function ArticleDetail({ article, onBack }) {
   const [loadingZymal, setLoadingZymal] = useState(false);
 
   // Update document meta tags for Obsidian Clipper and other web clippers
-  useDocumentMeta(article, zymalData);
+  useDocumentMeta(article, zymalData, annotations);
 
   // Z Summary Generation
   useEffect(() => {
@@ -436,6 +452,25 @@ Summary: 三句话摘要
     const blocks = [];
 
     // Recursively extract meaningful content blocks
+    // Helper to remove placeholder images from a node
+    const removePlaceholderImages = (node) => {
+      const imgs = node.querySelectorAll('img');
+      imgs.forEach(img => {
+        const src = img.getAttribute('src') || '';
+        const alt = img.getAttribute('alt') || '';
+        const ariaLabel = img.getAttribute('aria-label') || '';
+        // Check for common placeholder patterns
+        if (src.includes('placeholder') ||
+          src.includes('spacer') ||
+          src.includes('blank.gif') ||
+          src.includes('1x1') ||
+          alt.toLowerCase().includes('unavailable') ||
+          ariaLabel.toLowerCase().includes('unavailable')) {
+          img.remove();
+        }
+      });
+    };
+
     const processNode = (node) => {
       if (node.nodeType === Node.ELEMENT_NODE) {
         const tagName = node.tagName.toLowerCase();
@@ -446,14 +481,33 @@ Summary: 三句话摘要
           if (tagName === 'p' && !node.textContent.trim() && !node.querySelector('img')) {
             return;
           }
+          // Clone the node and remove placeholder images before adding to blocks
+          const clonedNode = node.cloneNode(true);
+          removePlaceholderImages(clonedNode);
+          // Skip if after removing placeholders the block is empty
+          if (!clonedNode.textContent.trim() && !clonedNode.querySelector('img')) {
+            return;
+          }
           blocks.push({
             type: tagName,
-            html: node.outerHTML,
-            text: node.textContent
+            html: clonedNode.outerHTML,
+            text: clonedNode.textContent
           });
         }
         // Handle images separately as individual blocks
         else if (tagName === 'img') {
+          // Skip placeholder images
+          const imgSrc = node.getAttribute('src') || '';
+          const imgAlt = node.getAttribute('alt') || '';
+          const imgAriaLabel = node.getAttribute('aria-label') || '';
+          if (imgSrc.includes('placeholder') ||
+            imgSrc.includes('spacer') ||
+            imgSrc.includes('blank.gif') ||
+            imgSrc.includes('1x1') ||
+            imgAlt.toLowerCase().includes('unavailable') ||
+            imgAriaLabel.toLowerCase().includes('unavailable')) {
+            return;
+          }
           blocks.push({
             type: 'img',
             html: node.outerHTML,
@@ -503,7 +557,7 @@ Text to translate:
 ${block.text}`;
 
       const translatedText = await generateText(prompt, { temperature: 0 });
-      
+
       setTranslations(prev => ({
         ...prev,
         [blockIndex]: translatedText.trim()
@@ -515,25 +569,83 @@ ${block.text}`;
     }
   }, [contentBlocks, translations, translatingIndex, language, generateText]);
 
+  // Handle Edit Annotation
+  const handleEditAnnotation = useCallback((annotationId, e) => {
+    const annotation = annotations.find(ann => ann.id === annotationId);
+    if (!annotation) return;
+
+    let cursorOffset = -1;
+    if (e) {
+      // Calculate cursor position from click
+      try {
+        // Use caretRangeFromPoint standard or caretPositionFromPoint (Firefox)
+        // We assume standard caretRangeFromPoint or compatible polyfill behavior for this environment
+        let range;
+        if (document.caretRangeFromPoint) {
+          range = document.caretRangeFromPoint(e.clientX, e.clientY);
+        } else if (document.caretPositionFromPoint) {
+          // Firefox fallback if needed, but usually caretRangeFromPoint is available in modern chrome/edge
+          const pos = document.caretPositionFromPoint(e.clientX, e.clientY);
+          if (pos) {
+            range = document.createRange();
+            range.setStart(pos.offsetNode, pos.offset);
+            range.setEnd(pos.offsetNode, pos.offset);
+          }
+        }
+
+        if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
+          cursorOffset = range.startOffset;
+        }
+      } catch (err) {
+        console.warn('Could not calculate caret position', err);
+      }
+    }
+
+    // Open popover with existing annotation text
+    setPopoverState({
+      isOpen: true,
+      position: { top: annotation.top, left: '100%' },
+      blockIndex: annotation.blockIndex,
+      type: annotation.type,
+      editingAnnotationId: annotationId,
+      initialText: annotation.text,
+      cursorOffset: cursorOffset
+    });
+  }, [annotations]);
+
   // Handle click on highlighted text to select it for unhighlighting
   useEffect(() => {
     const handleClick = (e) => {
       const articleEl = contentRef.current;
       if (!articleEl) return;
-      
+
       // Check if clicked on a highlight mark
       const clickedMark = e.target.closest('mark.zeader-highlight');
-      
+
       if (clickedMark && articleEl.contains(clickedMark)) {
-        // Clicked on a highlight mark - select it
+        // Check if this mark has an annotation
+        const annotationId = clickedMark.dataset.annotationId;
+
+        if (annotationId) {
+          // If already selected, open edit popover
+          if (selectedHighlightMark === clickedMark) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleEditAnnotation(parseInt(annotationId));
+            return;
+          }
+          // Otherwise fall through to selection logic below
+        }
+
+        // No annotation - regular selection logic
         e.preventDefault();
         e.stopPropagation();
-        
+
         // Remove selected class from previously selected mark
         if (selectedHighlightMark && selectedHighlightMark !== clickedMark) {
           selectedHighlightMark.classList.remove('zeader-highlight-selected');
         }
-        
+
         // Toggle selection on clicked mark
         if (selectedHighlightMark === clickedMark) {
           clickedMark.classList.remove('zeader-highlight-selected');
@@ -550,94 +662,398 @@ ${block.text}`;
         }
       }
     };
-    
+
     document.addEventListener('click', handleClick, true);
     return () => document.removeEventListener('click', handleClick, true);
-  }, [selectedHighlightMark]);
+  }, [selectedHighlightMark, handleEditAnnotation]);
+
+  // Handle Save Annotation
+  const handleSaveAnnotation = (text) => {
+    const { blockIndex, type, editingAnnotationId } = popoverState;
+    if (blockIndex === -1) return;
+
+    // Check if text is empty - if so, delete the annotation (or don't create it)
+    if (!text || !text.trim()) {
+      if (editingAnnotationId) {
+        // Editing existing annotation -> Delete it
+        handleDeleteAnnotation(editingAnnotationId);
+      } else {
+        // Creating new annotation -> Cancel creation (remove highlight)
+        if (type === 'selection' && pendingMarkRef.current) {
+          // Unwrap the mark (preserve nested HTML)
+          const mark = pendingMarkRef.current;
+          const parent = mark.parentNode;
+          if (parent) {
+            while (mark.firstChild) {
+              parent.insertBefore(mark.firstChild, mark);
+            }
+            parent.removeChild(mark);
+          }
+        } else if (type === 'block') {
+          // If we were creating a block annotation but saved empty, ensure we don't leave highlight
+          // (Logic for block highlight toggle handles this usually, but "Save" implies we're done)
+          // If we want to undo the highlight we just added:
+          setHighlightedBlocks(prev => {
+            const next = new Set(prev);
+            next.delete(blockIndex);
+            return next;
+          });
+        }
+      }
+
+      // Close popover and cleanup
+      setPopoverState(prev => ({ ...prev, isOpen: false, editingAnnotationId: null, initialText: '' }));
+      pendingMarkRef.current = null;
+      return;
+    }
+
+    // Check if we're editing an existing annotation
+    if (editingAnnotationId) {
+      // Update existing annotation
+      setAnnotations(prev => prev.map(ann =>
+        ann.id === editingAnnotationId
+          ? { ...ann, text }
+          : ann
+      ));
+
+      // Update the data-annotation attribute on the mark element
+      if (type === 'selection' && blockRefs.current[blockIndex]) {
+        const blockEl = blockRefs.current[blockIndex];
+        const mark = blockEl.querySelector(`mark[data-annotation-id="${editingAnnotationId}"]`);
+        if (mark) {
+          mark.dataset.annotation = text;
+        }
+
+        // Update contentBlocks state
+        // Find content container to avoid capturing wrapper divs
+        const contentContainer = blockEl.querySelector('[data-content-container="true"]');
+        if (contentContainer) {
+          const newHtml = contentContainer.innerHTML;
+          setContentBlocks(prev => {
+            const newBlocks = [...prev];
+            newBlocks[blockIndex] = {
+              ...newBlocks[blockIndex],
+              html: newHtml
+            };
+            return newBlocks;
+          });
+        }
+      }
+
+      setPopoverState(prev => ({ ...prev, isOpen: false, editingAnnotationId: null, initialText: '' }));
+      return;
+    }
+
+    // Creating new annotation
+    const annotationId = annotations.length + 1;
+    const annotation = {
+      id: annotationId,
+      text,
+      blockIndex,
+      top: popoverState.position.top,  // Already calculated relative to article container
+      type  // Store type for deletion handling
+    };
+
+    // 1. Inject Footnote Marker into DOM
+    if (type === 'selection' && pendingMarkRef.current) {
+      // Add data-annotation attribute for persistence
+      pendingMarkRef.current.dataset.annotation = text;
+      // Add annotation ID for deletion tracking
+      pendingMarkRef.current.dataset.annotationId = annotationId;
+
+      // Create and insert footnote marker
+      const sup = document.createElement('span');
+      // Make marker completely invisible and take up no space
+      sup.style.position = 'absolute';
+      sup.style.width = '0';
+      sup.style.height = '0';
+      sup.style.fontSize = '0';
+      sup.style.lineHeight = '0';
+      sup.style.color = 'transparent';
+      sup.style.userSelect = 'none';
+      sup.style.overflow = 'hidden';
+      sup.className = 'zeader-annotation-marker';
+      sup.dataset.annotationId = annotationId;
+      sup.textContent = `[^${annotationId}]`;
+      pendingMarkRef.current.insertAdjacentElement('afterend', sup);
+    } else if (type === 'block') {
+      // For block annotations, we append a hidden footnote marker at the END of the block content.
+      // We modify the state directly to ensure we don't capture temporary DOM elements (like highlights).
+
+      const markerHtml = `<span class="zeader-annotation-marker" style="position: absolute; width: 0px; height: 0px; font-size: 0px; line-height: 0; color: transparent; user-select: none; overflow: hidden;" data-annotation-id="${annotationId}">[^${annotationId}]</span>`;
+
+      setContentBlocks(prev => {
+        const newBlocks = [...prev];
+        const currentBlock = newBlocks[blockIndex];
+
+        if (currentBlock && !currentBlock.html.includes(`data-annotation-id="${annotationId}"`)) {
+          newBlocks[blockIndex] = {
+            ...currentBlock,
+            html: currentBlock.html + markerHtml
+          };
+        }
+        return newBlocks;
+      });
+    }
+
+    // 2. Persist changes to contentBlocks state (Update HTML)
+    // ONLY for selection type where we inserted DOM elements/logic is complex.
+    // For block type, we handled it above.
+    if (type === 'selection' && blockRefs.current[blockIndex]) {
+      const blockEl = blockRefs.current[blockIndex];
+      // Find content container to avoid capturing wrapper divs
+      const contentContainer = blockEl.querySelector('[data-content-container="true"]');
+
+      if (contentContainer) {
+        const newHtml = contentContainer.innerHTML;
+
+        setContentBlocks(prev => {
+          const newBlocks = [...prev];
+          newBlocks[blockIndex] = {
+            ...newBlocks[blockIndex],
+            html: newHtml
+          };
+          return newBlocks;
+        });
+      }
+    }
+
+    // 3. Update Annotations State
+    setAnnotations(prev => [...prev, annotation]);
+    setPopoverState(prev => ({ ...prev, isOpen: false }));
+    pendingMarkRef.current = null;
+  };
+
+  const handleCancelAnnotation = () => {
+    setPopoverState(prev => ({ ...prev, isOpen: false }));
+    // If we created a mark but cancelled, should we remove it? 
+    // User requested "highlight... then pop up". 
+    // Usually if I cancel note, I might want to keep highlight.
+    // Let's keep the highlight.
+    pendingMarkRef.current = null;
+  };
+
+
+  // Handle Delete Annotation
+  const handleDeleteAnnotation = useCallback((annotationId) => {
+    // Find the annotation
+    const annotation = annotations.find(ann => ann.id === annotationId);
+    if (!annotation) return;
+
+    const { blockIndex, type } = annotation;
+
+    // Remove from annotations state
+    setAnnotations(prev => prev.filter(ann => ann.id !== annotationId));
+
+    // For selection annotations, remove mark and footnote marker from DOM
+    if (type === 'selection' && blockRefs.current[blockIndex]) {
+      const blockEl = blockRefs.current[blockIndex];
+
+      // Find and remove the mark element
+      const mark = blockEl.querySelector(`mark[data-annotation-id="${annotationId}"]`);
+      if (mark) {
+        // Unwrap the mark: move all its children to its parent, then remove the mark
+        const parent = mark.parentNode;
+        while (mark.firstChild) {
+          parent.insertBefore(mark.firstChild, mark);
+        }
+        parent.removeChild(mark);
+      }
+
+      // Find and remove the footnote marker
+      const marker = blockEl.querySelector(`.zeader-annotation-marker[data-annotation-id="${annotationId}"]`);
+      if (marker) {
+        marker.remove();
+      }
+
+      // Update contentBlocks state with new HTML
+      // Find content container to avoid capturing wrapper divs
+      const contentContainer = blockEl.querySelector('[data-content-container="true"]');
+      if (contentContainer) {
+        const newHtml = contentContainer.innerHTML;
+        setContentBlocks(prev => {
+          const newBlocks = [...prev];
+          newBlocks[blockIndex] = {
+            ...newBlocks[blockIndex],
+            html: newHtml
+          };
+          return newBlocks;
+        });
+      }
+    }
+
+    // For block annotations, remove from highlighted blocks
+    // For block annotations, remove from highlighted blocks
+    if (type === 'block') {
+      setHighlightedBlocks(prev => {
+        const next = new Set(prev);
+        next.delete(blockIndex);
+        return next;
+      });
+
+      // Remove the footnote marker from the HTML state directly
+      setContentBlocks(prev => {
+        const newBlocks = [...prev];
+        const currentBlock = newBlocks[blockIndex];
+
+        if (currentBlock) {
+          // Create a regex to remove the specific marker span
+          // We need to escape the special characters in the ID if necessary, but integers are safe.
+          // The marker HTML format matches what we added in handleSaveAnnotation
+          const regex = new RegExp(`<span[^>]*data-annotation-id="${annotationId}"[^>]*>.*?<\\/span>`, 'g');
+
+          newBlocks[blockIndex] = {
+            ...currentBlock,
+            html: currentBlock.html.replace(regex, '')
+          };
+        }
+        return newBlocks;
+      });
+    }
+  }, [annotations]);
 
   // Highlight selected text or current block
-  const highlightContent = useCallback(() => {
-    // First, check if there's a selected highlight mark to unhighlight
+  const highlightContent = useCallback((targetBlockIndex = -1, openPopover = false) => {
+    // Determine context from args or selection
+    let isExplicitBlock = targetBlockIndex >= 0;
+
+    // First, check if there's a selected highlight mark to unhighlight (existing logic)
     if (selectedHighlightMark) {
-      // Unhighlight the selected mark by replacing it with its text content
-      const textContent = selectedHighlightMark.textContent;
-      const textNode = document.createTextNode(textContent);
-      selectedHighlightMark.parentNode.replaceChild(textNode, selectedHighlightMark);
+      // Check if this mark has an annotation
+      const annotationId = selectedHighlightMark.dataset.annotationId;
+      if (annotationId) {
+        // This mark has an annotation - delete both annotation and highlight
+        handleDeleteAnnotation(parseInt(annotationId));
+      } else {
+        // No annotation - just unhighlight the mark (preserve nested HTML)
+        const parent = selectedHighlightMark.parentNode;
+        while (selectedHighlightMark.firstChild) {
+          parent.insertBefore(selectedHighlightMark.firstChild, selectedHighlightMark);
+        }
+        parent.removeChild(selectedHighlightMark);
+      }
       setSelectedHighlightMark(null);
       return;
     }
-    
+
     const selection = window.getSelection();
-    
+
     if (selection && selection.toString().trim()) {
-      // User has selected text
+      // ... existing selection highlight logic ...
       const range = selection.getRangeAt(0);
       const selectedText = selection.toString().trim();
-      
-      // Check if selection is within our article content
+
       const articleEl = contentRef.current;
       if (articleEl && articleEl.contains(range.commonAncestorContainer)) {
-        // Check if selection is entirely within an existing highlight mark
+        // Existing check for nested marks...
         const commonAncestor = range.commonAncestorContainer;
-        const parentMark = commonAncestor.nodeType === Node.TEXT_NODE 
+        const parentMark = commonAncestor.nodeType === Node.TEXT_NODE
           ? commonAncestor.parentElement?.closest('mark.zeader-highlight')
           : commonAncestor.closest?.('mark.zeader-highlight');
-        
+
         if (parentMark && articleEl.contains(parentMark)) {
-          // Selection is within a highlight mark - check if it's the full mark text
+          // ... existing unhighlight logic match ...
           const markText = parentMark.textContent.trim();
           if (selectedText === markText) {
-            // Selection matches entire mark - unhighlight it
-            const textContent = parentMark.textContent;
-            const textNode = document.createTextNode(textContent);
-            parentMark.parentNode.replaceChild(textNode, parentMark);
+            // Unwrap the mark (preserve nested HTML)
+            const parent = parentMark.parentNode;
+            while (parentMark.firstChild) {
+              parent.insertBefore(parentMark.firstChild, parentMark);
+            }
+            parent.removeChild(parentMark);
             selection.removeAllRanges();
             return;
           }
         }
-        
+
         try {
-          // Create a mark element with highlight style
           const mark = document.createElement('mark');
           mark.className = 'zeader-highlight';
-          
-          // Wrap the selected content
           range.surroundContents(mark);
-          
-          // Clear the selection
           selection.removeAllRanges();
-        } catch (e) {
-          // surroundContents can fail if selection spans multiple elements
-          // In that case, fall back to highlighting the whole block
-          console.warn('Could not highlight selection, highlighting block instead');
-          if (selectedBlockIndex >= 0) {
-            setHighlightedBlocks(prev => {
-              const next = new Set(prev);
-              if (next.has(selectedBlockIndex)) {
-                next.delete(selectedBlockIndex);
-              } else {
-                next.add(selectedBlockIndex);
-              }
-              return next;
-            });
+
+          // Capture for annotation
+          pendingMarkRef.current = mark;
+
+          // Find block index
+          let currentBlockEl = mark.closest('[data-block-index]'); // Note: We need to ensure blocks have this attr or find index another way.
+          // Alternatively, find index by comparing containment in blockRefs
+          let foundIndex = -1;
+          blockRefs.current.forEach((el, idx) => {
+            if (el && el.contains(mark)) foundIndex = idx;
+          });
+
+          if (foundIndex !== -1) {
+            // Only open popover if requested (for 'n' key, not for 'h' key)
+            if (openPopover) {
+              // Calculate position relative to the article container
+              const markRect = mark.getBoundingClientRect();
+              const articleRect = articleEl.getBoundingClientRect();
+              const topRelativeToArticle = markRect.top - articleRect.top;
+
+              setPopoverState({
+                isOpen: true,
+                position: { top: topRelativeToArticle, left: '100%' },
+                blockIndex: foundIndex,
+                type: 'selection'
+              });
+            } else {
+              // For 'h' key, clear pendingMarkRef since we're not creating an annotation
+              pendingMarkRef.current = null;
+            }
           }
+
+        } catch (e) {
+          console.warn('Could not highlight selection', e);
+          // Fallback
         }
       }
     } else {
-      // No selection - toggle highlight on current block (original text only)
-      if (selectedBlockIndex >= 0) {
+      // No selection
+      // Identify block: either passed explicitly (from keydown) or current selectedBlockIndex
+      const idx = isExplicitBlock ? targetBlockIndex : selectedBlockIndex;
+
+      if (idx >= 0) {
+        // Toggle highlight block
         setHighlightedBlocks(prev => {
           const next = new Set(prev);
-          if (next.has(selectedBlockIndex)) {
-            next.delete(selectedBlockIndex);
+          // Logic: If 'n' key pressed (isExplicitBlock), we want to ADD annotation, not just toggle.
+          // If called via 'h' (implicit), we toggle.
+
+          if (!isExplicitBlock) {
+            // Classic toggle behavior for 'h' (no popover)
+            if (next.has(idx)) next.delete(idx);
+            else next.add(idx);
           } else {
-            next.add(selectedBlockIndex);
+            // 'n' behavior: Ensure highlighted and open popover
+            next.add(idx);
           }
           return next;
         });
+
+        if (isExplicitBlock) {
+          // Open popover for this block only if requested
+          if (openPopover) {
+            const blockEl = blockRefs.current[idx];
+            const articleEl = contentRef.current;
+            if (blockEl && articleEl) {
+              // Calculate position relative to the article container
+              const blockRect = blockEl.getBoundingClientRect();
+              const articleRect = articleEl.getBoundingClientRect();
+              const topRelativeToArticle = blockRect.top - articleRect.top;
+
+              setPopoverState({
+                isOpen: true,
+                position: { top: topRelativeToArticle, left: '100%' },
+                blockIndex: idx,
+                type: 'block'
+              });
+            }
+          }
+        }
       }
     }
-  }, [selectedBlockIndex, selectedHighlightMark, highlightedBlocks]);
+  }, [selectedBlockIndex, selectedHighlightMark, highlightedBlocks, handleDeleteAnnotation]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -654,7 +1070,65 @@ ${block.text}`;
 
       // Highlight on 'h' or 'H' key press
       if (e.key === 'h' || e.key === 'H') {
-        highlightContent();
+        highlightContent(-1, false); // Don't open popover for 'h' key
+        return;
+      }
+
+      // Annotation on 'n' or 'N' key press
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+
+        // If a highlight is selected (via click), handle it (delete or add annotation)
+        if (selectedHighlightMark) {
+          highlightContent(-1, true);
+          return;
+        }
+
+        // Check if there is selection
+        const selection = window.getSelection();
+        if (selection && selection.toString().trim()) {
+          // Check if selecting an annotated mark
+          const range = selection.getRangeAt(0);
+          const commonAncestor = range.commonAncestorContainer;
+          const parentMark = commonAncestor.nodeType === Node.TEXT_NODE
+            ? commonAncestor.parentElement?.closest('mark.zeader-highlight[data-annotation-id]')
+            : commonAncestor.closest?.('mark.zeader-highlight[data-annotation-id]');
+
+          if (parentMark && contentRef.current?.contains(parentMark)) {
+            // This is an annotated mark - delete the annotation
+            const annotationId = parseInt(parentMark.dataset.annotationId);
+            if (!isNaN(annotationId)) {
+              handleDeleteAnnotation(annotationId);
+              selection.removeAllRanges();
+              return;
+            }
+          }
+
+
+          // Not an annotated mark - create new annotation
+          highlightContent(-1, true); // Open popover for annotation
+        } else {
+          // No selection - check if current block has annotation or highlight
+          if (selectedBlockIndex >= 0) {
+            const existingAnnotation = annotations.find(ann => ann.blockIndex === selectedBlockIndex);
+            const isBlockHighlighted = highlightedBlocks.has(selectedBlockIndex);
+
+            if (existingAnnotation) {
+              // Block has annotation - delete it (this will also remove highlight)
+              handleDeleteAnnotation(existingAnnotation.id);
+            } else if (isBlockHighlighted) {
+              // Block is highlighted but has no annotation - remove highlight
+              setHighlightedBlocks(prev => {
+                const next = new Set(prev);
+                next.delete(selectedBlockIndex);
+                return next;
+              });
+            } else {
+              // No annotation and not highlighted - create new annotation
+              highlightContent(selectedBlockIndex, true); // Open popover for annotation
+            }
+          }
+        }
         return;
       }
 
@@ -695,7 +1169,7 @@ ${block.text}`;
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, contentBlocks.length, article.link, translateBlock, highlightContent, isAIEnabled, selectedBlockIndex, contentBlocks]);
+  }, [onBack, contentBlocks.length, article.link, translateBlock, highlightContent, isAIEnabled, selectedBlockIndex, contentBlocks, handleDeleteAnnotation, annotations, selectedHighlightMark]);
 
   // Auto-scroll selected block to center
   useEffect(() => {
@@ -885,8 +1359,8 @@ ${block.text}`;
                 ref={el => blockRefs.current[index] = el}
                 className="transition-all duration-200 mb-6 pl-6 -ml-6 border-l-4 border-transparent"
               >
-                <MemoizedContentBlock 
-                  html={block.html} 
+                <MemoizedContentBlock
+                  html={block.html}
                   translation={translations[index]}
                   isTranslating={translatingIndex === index}
                   isHighlighted={highlightedBlocks.has(index)}
@@ -896,6 +1370,30 @@ ${block.text}`;
           ) : (
             <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
           )}
+
+          {/* Annotation Popover */}
+          {popoverState.isOpen && (
+            <AnnotationPopover
+              position={{ top: popoverState.position.top, left: '100%' }} // Force left 100%
+              onSave={handleSaveAnnotation}
+              onCancel={handleCancelAnnotation}
+              initialText={popoverState.initialText}
+              initialCursorOffset={popoverState.cursorOffset}
+            />
+          )}
+
+          {/* Render Side Notes */}
+          {annotations.map(ann => (
+            <AnnotationSideNote
+              key={ann.id}
+              text={ann.text}
+              top={ann.top}
+              onClick={(e) => handleEditAnnotation(ann.id, e)}
+            />
+          ))}
+
+          {/* Hidden Footnotes Section for Clipper */}
+          <div dangerouslySetInnerHTML={{ __html: generateFootnotesSection(annotations) }} />
         </article>
       </div>
     </div>

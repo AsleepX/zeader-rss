@@ -145,6 +145,22 @@ Summary: 渚光希与久留木玲出演的AV作品
         const div = document.createElement('div');
         div.innerHTML = htmlContent;
 
+        // Remove placeholder images
+        const allImgs = div.querySelectorAll('img');
+        allImgs.forEach(img => {
+            const src = img.getAttribute('src') || '';
+            const alt = img.getAttribute('alt') || '';
+            const ariaLabel = img.getAttribute('aria-label') || '';
+            if (src.includes('placeholder') || 
+                src.includes('spacer') || 
+                src.includes('blank.gif') ||
+                src.includes('1x1') ||
+                alt.toLowerCase().includes('unavailable') ||
+                ariaLabel.toLowerCase().includes('unavailable')) {
+                img.remove();
+            }
+        });
+
         // Fix for JavDB and other sites with hotlink protection
         const images = div.querySelectorAll('img');
         images.forEach(img => {

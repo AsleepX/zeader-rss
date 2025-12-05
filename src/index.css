@@ -58,6 +58,20 @@ body::-webkit-scrollbar-track,
   background: transparent;
 }
 
+/* Utility class for hiding elements visually but keeping them in DOM for accessibility/clippers */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+  opacity: 0;
+}
+
 html::-webkit-scrollbar-thumb,
 body::-webkit-scrollbar-thumb,
 *::-webkit-scrollbar-thumb {
@@ -80,7 +94,7 @@ body::-webkit-scrollbar-thumb:hover,
 }
 
 .prose {
-  font-family:'Source Serif 4', 'Noto Serif SC Adjusted', 'Noto Serif SC', serif;
+  font-family: 'Source Serif 4', 'Noto Serif SC Adjusted', 'Noto Serif SC', serif;
   font-optical-sizing: auto;
   font-variation-settings: 'opsz' 18;
   line-height: 1.8;
@@ -149,10 +163,10 @@ body::-webkit-scrollbar-thumb:hover,
 }
 
 /* Only add spacing between consecutive images */
-.prose-lg img + img,
-.prose-lg p > img + img,
-.prose-lg figure + figure img,
-.prose-lg p + p > img:only-child {
+.prose-lg img+img,
+.prose-lg p>img+img,
+.prose-lg figure+figure img,
+.prose-lg p+p>img:only-child {
   margin-top: 1.5em;
 }
 
@@ -198,10 +212,10 @@ body::-webkit-scrollbar-thumb:hover,
   }
 
   /* Only add spacing between consecutive images on mobile */
-  .article-detail-content.prose-lg img + img,
-  .article-detail-content.prose-lg p > img + img,
-  .article-detail-content.prose-lg figure + figure img,
-  .article-detail-content.prose-lg p + p > img:only-child {
+  .article-detail-content.prose-lg img+img,
+  .article-detail-content.prose-lg p>img+img,
+  .article-detail-content.prose-lg figure+figure img,
+  .article-detail-content.prose-lg p+p>img:only-child {
     margin-top: 1.25em;
   }
 }
