@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import { getEmbedUrl } from '../utils/rss';
 import { useAIStore } from '../store/useAIStore';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 
 export function FeedDetailModal({ item, onClose, originRect }) {
     if (!item) return null;
@@ -12,6 +13,9 @@ export function FeedDetailModal({ item, onClose, originRect }) {
     const { generateText, language, isAIEnabled } = useAIStore();
     const [zymalData, setZymalData] = useState(null);
     const [loadingZymal, setLoadingZymal] = useState(false);
+
+    // Update document meta tags for Obsidian Clipper and other web clippers
+    useDocumentMeta(item, zymalData);
 
     // Prevent body scroll when modal is open
     useEffect(() => {

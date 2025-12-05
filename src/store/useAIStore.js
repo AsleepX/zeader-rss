@@ -97,7 +97,7 @@ export const useAIStore = create(
                 }
             },
 
-            generateText: async (context) => {
+            generateText: async (context, options = {}) => {
                 const { apiBase, apiKey, modelName, language, isAIEnabled } = get();
                 const { token } = useAuthStore.getState();
 
@@ -133,13 +133,20 @@ export const useAIStore = create(
                     }
                 });
 
-                const completion = await openai.chat.completions.create({
+                const completionOptions = {
                     messages: [
                         { role: "system", content: `You are a helpful AI assistant. Please answer in ${language}.` },
                         { role: "user", content: context }
                     ],
                     model: modelName,
-                });
+                };
+
+                // Add optional parameters
+                if (options.temperature !== undefined) {
+                    completionOptions.temperature = options.temperature;
+                }
+
+                const completion = await openai.chat.completions.create(completionOptions);
 
                 return completion.choices[0]?.message?.content || '';
             },

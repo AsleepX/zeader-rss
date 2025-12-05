@@ -236,3 +236,30 @@ body::-webkit-scrollbar-thumb:hover,
   text-decoration-thickness: 2px;
   text-underline-offset: 5px;
 }
+
+/* Text Highlight Style - same as selection but with yellow colors */
+mark.zeader-highlight {
+  background-color: rgba(255, 249, 217, 0.6);
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: #FFD400;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+/* Selected highlight style - slightly deeper yellow background when clicked for unhighlighting */
+mark.zeader-highlight-selected {
+  background-color: rgba(255, 243, 180, 0.75);
+}
+
+/* Highlight style for links inside highlight marks - preserve link color */
+mark.zeader-highlight a,
+.zeader-block-highlight a {
+  background-color: rgba(255, 249, 217, 0.6);
+}
+
+mark.zeader-highlight-selected a {
+  background-color: rgba(255, 243, 180, 0.75);
+}

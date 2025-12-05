@@ -6,6 +6,7 @@ import { useFeedStore } from '../store/useFeedStore';
 import { useAIStore } from '../store/useAIStore';
 import { api } from '../utils/api';
 import { AISummaryPanel } from './AISummaryPanel';
+import { useDocumentMeta } from '../hooks/useDocumentMeta';
 
 // Helper to extract the first image from HTML content
 const extractImage = (html) => {
@@ -202,9 +203,58 @@ function ArticleList({ articles, onSelectArticle, initialSelectedId, onMarkAsRea
   );
 }
 
-const MemoizedContentBlock = React.memo(({ html }) => (
-  <div dangerouslySetInnerHTML={{ __html: html }} />
-));
+// Helper function to wrap text content with <mark> tags for Obsidian Clipper compatibility
+const wrapTextWithMark = (html) => {
+  // Parse HTML and wrap text nodes with <mark> tags
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  
+  const wrapTextNodes = (node) => {
+    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+      const mark = doc.createElement('mark');
+      mark.className = 'zeader-highlight';
+      node.parentNode.insertBefore(mark, node);
+      mark.appendChild(node);
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      // Skip certain elements
+      const tagName = node.tagName.toLowerCase();
+      if (tagName === 'mark' || tagName === 'img' || tagName === 'br' || tagName === 'hr') {
+        return;
+      }
+      // Process children (make a copy of childNodes since we're modifying the DOM)
+      Array.from(node.childNodes).forEach(child => wrapTextNodes(child));
+    }
+  };
+  
+  wrapTextNodes(doc.body);
+  return doc.body.innerHTML;
+};
+
+const MemoizedContentBlock = React.memo(({ html, translation, isTranslating, isHighlighted }) => {
+  // Wrap text content with <mark> tags when highlighted for Obsidian Clipper compatibility
+  const wrappedHtml = isHighlighted ? wrapTextWithMark(html) : html;
+  
+  return (
+    <div>
+      <div className="relative">
+        <div 
+          className={isHighlighted ? 'zeader-block-highlight' : ''}
+          dangerouslySetInnerHTML={{ __html: wrappedHtml }} 
+        />
+        {isTranslating && (
+          <span className="inline-flex items-center ml-2 text-primary-500">
+            <Loader2 className="w-4 h-4 animate-spin" />
+          </span>
+        )}
+      </div>
+      {translation && (
+        <div className="mt-3 pt-3 border-t border-gray-100 text-gray-700 leading-relaxed">
+          {translation}
+        </div>
+      )}
+    </div>
+  );
+});
 
 function ArticleDetail({ article, onBack }) {
   const { feeds } = useFeedStore();
@@ -215,6 +265,14 @@ function ArticleDetail({ article, onBack }) {
   const [highlightStyle, setHighlightStyle] = useState({ top: 0, height: 0, opacity: 0 });
   const blockRefs = useRef([]);
   const contentRef = useRef(null);
+
+  // Translation state
+  const [translations, setTranslations] = useState({}); // { blockIndex: translatedText }
+  const [translatingIndex, setTranslatingIndex] = useState(null); // Currently translating block index
+
+  // Highlight state (temporary, not persisted)
+  const [highlightedBlocks, setHighlightedBlocks] = useState(new Set()); // Set of highlighted block indices
+  const [selectedHighlightMark, setSelectedHighlightMark] = useState(null); // Currently selected highlight mark element for unhighlighting
 
   useLayoutEffect(() => {
     const updateHighlight = () => {
@@ -234,10 +292,14 @@ function ArticleDetail({ article, onBack }) {
       }
     };
 
-    updateHighlight();
+    // Use requestAnimationFrame to ensure DOM has updated after translation changes
+    const rafId = requestAnimationFrame(updateHighlight);
     window.addEventListener('resize', updateHighlight);
-    return () => window.removeEventListener('resize', updateHighlight);
-  }, [selectedBlockIndex, contentBlocks]);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', updateHighlight);
+    };
+  }, [selectedBlockIndex, contentBlocks, translations]);
   const scrollContainerRef = useRef(null); // 添加滚动容器的引用
   const isUserScrolling = useRef(false);
   const scrollTimeout = useRef(null);
@@ -250,6 +312,9 @@ function ArticleDetail({ article, onBack }) {
   const { generateText, language, isAIEnabled } = useAIStore();
   const [zymalData, setZymalData] = useState(null);
   const [loadingZymal, setLoadingZymal] = useState(false);
+
+  // Update document meta tags for Obsidian Clipper and other web clippers
+  useDocumentMeta(article, zymalData);
 
   // Z Summary Generation
   useEffect(() => {
@@ -408,6 +473,172 @@ Summary: 三句话摘要
     blockRefs.current = [];
   }, [fullContent, article.content, article.contentSnippet, shouldLoadFullContent, isLoading]);
 
+  // Translate current block function
+  const translateBlock = useCallback(async (blockIndex) => {
+    const block = contentBlocks[blockIndex];
+    if (!block || !block.text?.trim()) return;
+
+    // If already translated, toggle visibility (remove translation)
+    if (translations[blockIndex] !== undefined) {
+      setTranslations(prev => {
+        const newTranslations = { ...prev };
+        delete newTranslations[blockIndex];
+        return newTranslations;
+      });
+      return;
+    }
+
+    // Skip if already translating this block
+    if (translatingIndex === blockIndex) return;
+
+    // Skip image blocks
+    if (block.type === 'img') return;
+
+    setTranslatingIndex(blockIndex);
+
+    try {
+      const prompt = `You are a professional translator. Translate the following text to ${language}. Only output the translated text, without any explanation or additional content.
+
+Text to translate:
+${block.text}`;
+
+      const translatedText = await generateText(prompt, { temperature: 0 });
+      
+      setTranslations(prev => ({
+        ...prev,
+        [blockIndex]: translatedText.trim()
+      }));
+    } catch (error) {
+      console.error('Translation error:', error);
+    } finally {
+      setTranslatingIndex(null);
+    }
+  }, [contentBlocks, translations, translatingIndex, language, generateText]);
+
+  // Handle click on highlighted text to select it for unhighlighting
+  useEffect(() => {
+    const handleClick = (e) => {
+      const articleEl = contentRef.current;
+      if (!articleEl) return;
+      
+      // Check if clicked on a highlight mark
+      const clickedMark = e.target.closest('mark.zeader-highlight');
+      
+      if (clickedMark && articleEl.contains(clickedMark)) {
+        // Clicked on a highlight mark - select it
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Remove selected class from previously selected mark
+        if (selectedHighlightMark && selectedHighlightMark !== clickedMark) {
+          selectedHighlightMark.classList.remove('zeader-highlight-selected');
+        }
+        
+        // Toggle selection on clicked mark
+        if (selectedHighlightMark === clickedMark) {
+          clickedMark.classList.remove('zeader-highlight-selected');
+          setSelectedHighlightMark(null);
+        } else {
+          clickedMark.classList.add('zeader-highlight-selected');
+          setSelectedHighlightMark(clickedMark);
+        }
+      } else if (articleEl.contains(e.target)) {
+        // Clicked inside article but not on a highlight mark - deselect
+        if (selectedHighlightMark) {
+          selectedHighlightMark.classList.remove('zeader-highlight-selected');
+          setSelectedHighlightMark(null);
+        }
+      }
+    };
+    
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
+  }, [selectedHighlightMark]);
+
+  // Highlight selected text or current block
+  const highlightContent = useCallback(() => {
+    // First, check if there's a selected highlight mark to unhighlight
+    if (selectedHighlightMark) {
+      // Unhighlight the selected mark by replacing it with its text content
+      const textContent = selectedHighlightMark.textContent;
+      const textNode = document.createTextNode(textContent);
+      selectedHighlightMark.parentNode.replaceChild(textNode, selectedHighlightMark);
+      setSelectedHighlightMark(null);
+      return;
+    }
+    
+    const selection = window.getSelection();
+    
+    if (selection && selection.toString().trim()) {
+      // User has selected text
+      const range = selection.getRangeAt(0);
+      const selectedText = selection.toString().trim();
+      
+      // Check if selection is within our article content
+      const articleEl = contentRef.current;
+      if (articleEl && articleEl.contains(range.commonAncestorContainer)) {
+        // Check if selection is entirely within an existing highlight mark
+        const commonAncestor = range.commonAncestorContainer;
+        const parentMark = commonAncestor.nodeType === Node.TEXT_NODE 
+          ? commonAncestor.parentElement?.closest('mark.zeader-highlight')
+          : commonAncestor.closest?.('mark.zeader-highlight');
+        
+        if (parentMark && articleEl.contains(parentMark)) {
+          // Selection is within a highlight mark - check if it's the full mark text
+          const markText = parentMark.textContent.trim();
+          if (selectedText === markText) {
+            // Selection matches entire mark - unhighlight it
+            const textContent = parentMark.textContent;
+            const textNode = document.createTextNode(textContent);
+            parentMark.parentNode.replaceChild(textNode, parentMark);
+            selection.removeAllRanges();
+            return;
+          }
+        }
+        
+        try {
+          // Create a mark element with highlight style
+          const mark = document.createElement('mark');
+          mark.className = 'zeader-highlight';
+          
+          // Wrap the selected content
+          range.surroundContents(mark);
+          
+          // Clear the selection
+          selection.removeAllRanges();
+        } catch (e) {
+          // surroundContents can fail if selection spans multiple elements
+          // In that case, fall back to highlighting the whole block
+          console.warn('Could not highlight selection, highlighting block instead');
+          if (selectedBlockIndex >= 0) {
+            setHighlightedBlocks(prev => {
+              const next = new Set(prev);
+              if (next.has(selectedBlockIndex)) {
+                next.delete(selectedBlockIndex);
+              } else {
+                next.add(selectedBlockIndex);
+              }
+              return next;
+            });
+          }
+        }
+      }
+    } else {
+      // No selection - toggle highlight on current block (original text only)
+      if (selectedBlockIndex >= 0) {
+        setHighlightedBlocks(prev => {
+          const next = new Set(prev);
+          if (next.has(selectedBlockIndex)) {
+            next.delete(selectedBlockIndex);
+          } else {
+            next.add(selectedBlockIndex);
+          }
+          return next;
+        });
+      }
+    }
+  }, [selectedBlockIndex, selectedHighlightMark, highlightedBlocks]);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -418,6 +649,20 @@ Summary: 三句话摘要
 
       if (e.key === 'Escape') {
         onBack();
+        return;
+      }
+
+      // Highlight on 'h' or 'H' key press
+      if (e.key === 'h' || e.key === 'H') {
+        highlightContent();
+        return;
+      }
+
+      // Translate current block on 't' or 'T' key press
+      if (e.key === 't' || e.key === 'T') {
+        if (isAIEnabled && selectedBlockIndex >= 0 && contentBlocks[selectedBlockIndex]) {
+          translateBlock(selectedBlockIndex);
+        }
         return;
       }
 
@@ -450,7 +695,7 @@ Summary: 三句话摘要
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, contentBlocks.length, article.link]);
+  }, [onBack, contentBlocks.length, article.link, translateBlock, highlightContent, isAIEnabled, selectedBlockIndex, contentBlocks]);
 
   // Auto-scroll selected block to center
   useEffect(() => {
@@ -640,7 +885,12 @@ Summary: 三句话摘要
                 ref={el => blockRefs.current[index] = el}
                 className="transition-all duration-200 mb-6 pl-6 -ml-6 border-l-4 border-transparent"
               >
-                <MemoizedContentBlock html={block.html} />
+                <MemoizedContentBlock 
+                  html={block.html} 
+                  translation={translations[index]}
+                  isTranslating={translatingIndex === index}
+                  isHighlighted={highlightedBlocks.has(index)}
+                />
               </div>
             ))
           ) : (
