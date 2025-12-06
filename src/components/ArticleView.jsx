@@ -10,6 +10,9 @@ import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { AnnotationPopover } from './AnnotationPopover';
 import { AnnotationSideNote } from './AnnotationSideNote';
 import { generateFootnotesSection } from '../utils/textUtils';
+import { useTTSStore } from '../store/useTTSStore';
+import { AudioPlayer } from './AudioPlayer';
+import { Headphones } from 'lucide-react';
 
 // Helper to extract the first image from HTML content
 const extractImage = (html) => {
@@ -233,7 +236,7 @@ const wrapTextWithMark = (html) => {
   return doc.body.innerHTML;
 };
 
-const MemoizedContentBlock = React.memo(({ html, translation, isTranslating, isHighlighted }) => {
+const MemoizedContentBlock = React.memo(({ html, translation, isTranslating, isHighlighted, isReading }) => {
   // Wrap text content with <mark> tags when highlighted for Obsidian Clipper compatibility
   const wrappedHtml = isHighlighted ? wrapTextWithMark(html) : html;
 
@@ -242,7 +245,7 @@ const MemoizedContentBlock = React.memo(({ html, translation, isTranslating, isH
       <div className="relative">
         <div
           data-content-container="true"
-          className={isHighlighted ? 'zeader-block-highlight' : ''}
+          className={`${isHighlighted ? 'zeader-block-highlight' : ''} ${isReading ? 'bg-blue-50/50 rounded-lg -mx-2 px-2 transition-colors duration-300' : ''}`}
           dangerouslySetInnerHTML={{ __html: wrappedHtml }}
         />
         {isTranslating && (
@@ -331,6 +334,26 @@ function ArticleDetail({ article, onBack }) {
 
   // Update document meta tags for Obsidian Clipper and other web clippers
   useDocumentMeta(article, zymalData, annotations);
+
+  // TTS Integration
+  const { playArticle, currentBlockIndex: ttsBlockIndex, isPlaying: isTTSPlaying } = useTTSStore();
+
+  // Sync TTS progress with selected block
+  useEffect(() => {
+    if (isTTSPlaying && ttsBlockIndex >= 0) {
+      setSelectedBlockIndex(ttsBlockIndex);
+      shouldAutoScroll.current = true;
+    }
+  }, [ttsBlockIndex, isTTSPlaying]);
+
+  // Clean up TTS when unmounting article
+  useEffect(() => {
+    return () => {
+      // Optional: Stop TTS when leaving article? Or let it play?
+      // Let's keep it playing as a "background" feature if the user navigates back to list.
+      // But if they open a DIFFERENT article, playArticle will overwrite state. 
+    };
+  }, []);
 
   // Z Summary Generation
   useEffect(() => {
@@ -1283,15 +1306,24 @@ ${block.text}`;
               <span>•</span>
               <span>{format(date, 'MMM d, yyyy h:mm a')}</span>
             </div>
-            <a
-              href={article.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-primary-600 transition-colors"
-              title="View original (o)"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => playArticle(contentBlocks)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-full text-xs font-medium transition-colors"
+              >
+                <Headphones className="w-3.5 h-3.5" />
+                <span>Listen</span>
+              </button>
+              <a
+                href={article.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-primary-600 transition-colors"
+                title="View original (o)"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
           </div>
         </header>
 
@@ -1364,12 +1396,15 @@ ${block.text}`;
                   translation={translations[index]}
                   isTranslating={translatingIndex === index}
                   isHighlighted={highlightedBlocks.has(index)}
+                  isReading={isTTSPlaying && ttsBlockIndex === index}
                 />
               </div>
             ))
           ) : (
             <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
           )}
+
+          <AudioPlayer />
 
           {/* Annotation Popover */}
           {popoverState.isOpen && (

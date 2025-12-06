@@ -114,6 +114,15 @@ export function useDocumentMeta(article, zymalData = null, annotations = []) {
               }
             }
 
+            // Handle images
+            if (tagName === 'img') {
+              const src = node.getAttribute('src');
+              const alt = node.getAttribute('alt') || '';
+              if (src) {
+                return `![${alt}](${src})\n`;
+              }
+            }
+
             // For other elements, recursively process children
             return Array.from(node.childNodes)
               .map(child => extractTextWithFormatting(child, parentIsHighlighted))

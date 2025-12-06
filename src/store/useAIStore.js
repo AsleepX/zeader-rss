@@ -9,6 +9,7 @@ export const useAIStore = create(
             // Settings
             apiBase: 'https://api.openai.com/v1',
             apiKey: '',
+            voiceApiKey: '', // Separate key for TTS
 
             modelName: 'gpt-4o',
             language: 'Chinese',
@@ -156,6 +157,7 @@ export const useAIStore = create(
             partialize: (state) => ({
                 apiBase: state.apiBase,
                 apiKey: state.apiKey,
+                voiceApiKey: state.voiceApiKey, // Persist voiceApiKey
                 modelName: state.modelName,
                 language: state.language,
                 isAIEnabled: state.isAIEnabled

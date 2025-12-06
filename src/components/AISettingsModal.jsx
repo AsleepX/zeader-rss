@@ -4,7 +4,7 @@ import { X, Save, Settings } from 'lucide-react';
 import { useAIStore } from '../store/useAIStore';
 
 export function AISettingsModal() {
-    const { isAISettingsOpen, closeAISettings, apiBase, apiKey, modelName, language, isAIEnabled, updateSettings } = useAIStore();
+    const { isAISettingsOpen, closeAISettings, apiBase, apiKey, voiceApiKey, modelName, language, isAIEnabled, updateSettings } = useAIStore();
 
     // Local state for form inputs to avoid excessive store updates/re-renders while typing
     const [localSettings, setLocalSettings] = useState({
@@ -20,12 +20,13 @@ export function AISettingsModal() {
             setLocalSettings({
                 apiBase: apiBase || 'https://api.openai.com/v1',
                 apiKey: apiKey || '',
+                voiceApiKey: voiceApiKey || '',
                 modelName: modelName || 'gpt-3.5-turbo',
                 language: language || 'Chinese',
                 isAIEnabled: isAIEnabled !== undefined ? isAIEnabled : true
             });
         }
-    }, [isAISettingsOpen, apiBase, apiKey, modelName, language, isAIEnabled]);
+    }, [isAISettingsOpen, apiBase, apiKey, voiceApiKey, modelName, language, isAIEnabled]);
 
     const handleSave = () => {
         updateSettings(localSettings);
@@ -109,6 +110,19 @@ export function AISettingsModal() {
                     </div>
 
                     <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Voice API Key (SiliconFlow)</label>
+                        <input
+                            type="password"
+                            value={localSettings.voiceApiKey || ''}
+                            onChange={(e) => setLocalSettings(prev => ({ ...prev, voiceApiKey: e.target.value }))}
+                            placeholder="sk-..."
+                            disabled={!localSettings.isAIEnabled}
+                            className={`w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all ${!localSettings.isAIEnabled ? 'bg-gray-100 text-gray-400' : ''}`}
+                        />
+                        <p className="text-xs text-gray-400 mt-1">API Key for SiliconFlow TTS (Index-TTS). Leave empty to use main API Key if applicable.</p>
+                    </div>
+
+                    <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Model Name</label>
                         <input
                             type="text"
@@ -158,6 +172,6 @@ export function AISettingsModal() {
                     </button>
                 </div>
             </motion.div>
-        </div>
+        </div >
     );
 }
