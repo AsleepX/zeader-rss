@@ -12,6 +12,7 @@ export const useAIStore = create(
             voiceApiKey: '', // Separate key for TTS
 
             modelName: 'gpt-4o',
+            audioModel: 'IndexTeam/IndexTTS-2', // Default TTS model
             language: 'Chinese',
             isAIEnabled: true,
 
@@ -159,6 +160,7 @@ export const useAIStore = create(
                 apiKey: state.apiKey,
                 voiceApiKey: state.voiceApiKey, // Persist voiceApiKey
                 modelName: state.modelName,
+                audioModel: state.audioModel,
                 language: state.language,
                 isAIEnabled: state.isAIEnabled
             }), // Only persist settings

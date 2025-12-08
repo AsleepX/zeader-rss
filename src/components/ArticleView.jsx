@@ -336,7 +336,7 @@ function ArticleDetail({ article, onBack }) {
   useDocumentMeta(article, zymalData, annotations);
 
   // TTS Integration
-  const { playArticle, currentBlockIndex: ttsBlockIndex, isPlaying: isTTSPlaying } = useTTSStore();
+  const { playArticle, stop, currentBlockIndex: ttsBlockIndex, isPlaying: isTTSPlaying } = useTTSStore();
 
   // Sync TTS progress with selected block
   useEffect(() => {
@@ -349,11 +349,9 @@ function ArticleDetail({ article, onBack }) {
   // Clean up TTS when unmounting article
   useEffect(() => {
     return () => {
-      // Optional: Stop TTS when leaving article? Or let it play?
-      // Let's keep it playing as a "background" feature if the user navigates back to list.
-      // But if they open a DIFFERENT article, playArticle will overwrite state. 
+      stop(); // Stop playback when leaving the article
     };
-  }, []);
+  }, [stop]);
 
   // Z Summary Generation
   useEffect(() => {
@@ -1283,14 +1281,33 @@ ${block.text}`;
       <div className="max-w-[676px] mx-auto px-6 py-8 animate-in fade-in duration-300">
         {/* Article Header */}
         <header className="mb-10">
-          <div className="flex items-center gap-2 mb-6 text-sm font-medium text-gray-600">
-            <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
-              {article.feedTitle ? article.feedTitle[0].toUpperCase() : 'R'}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
+              <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                {article.feedTitle ? article.feedTitle[0].toUpperCase() : 'R'}
+              </div>
+              <span>{article.feedTitle}</span>
             </div>
-            <span>{article.feedTitle}</span>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  const image = extractImage(article.content) || extractImage(article.contentSnippet);
+                  playArticle(contentBlocks, 0, {
+                    title: article.title,
+                    author: article.author || article.feedTitle,
+                    image: image
+                  });
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-full text-xs font-medium transition-colors"
+              >
+                <Headphones className="w-3.5 h-3.5" />
+                <span>Listen</span>
+              </button>
+            </div>
           </div>
 
-          <h1 className="article-title text-4xl md:text-5xl font-medium text-gray-900 mb-6 leading-tight">
+          <h1 className="article-title text-3xl md:text-4xl font-medium text-gray-900 mb-6 leading-tight">
             {article.title}
           </h1>
 
@@ -1306,24 +1323,15 @@ ${block.text}`;
               <span>•</span>
               <span>{format(date, 'MMM d, yyyy h:mm a')}</span>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => playArticle(contentBlocks)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-full text-xs font-medium transition-colors"
-              >
-                <Headphones className="w-3.5 h-3.5" />
-                <span>Listen</span>
-              </button>
-              <a
-                href={article.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-400 hover:text-primary-600 transition-colors"
-                title="View original (o)"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            </div>
+            <a
+              href={article.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-primary-600 transition-colors"
+              title="View original (o)"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
           </div>
         </header>
 

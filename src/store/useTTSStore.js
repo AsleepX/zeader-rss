@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useAIStore } from './useAIStore';
+import { useAuthStore } from './useAuthStore';
 
 export const useTTSStore = create((set, get) => ({
     // State
@@ -13,13 +14,17 @@ export const useTTSStore = create((set, get) => ({
     // Pre-fetching State
     audioCache: new Map(), // Map<index, Promise<string>>
 
+    // Metadata
+    articleMetadata: null, // { title, author, image }
+
     // Settings
     playbackRate: 1.0,
-    voice: 'anna', // Default voice
+    volume: 1.0,
+    voice: 'bella', // Default voice
     availableVoices: [
+        { id: 'bella', name: 'Bella' },
         { id: 'alex', name: 'Alex' },
         { id: 'anna', name: 'Anna' },
-        { id: 'bella', name: 'Bella' },
         { id: 'benjamin', name: 'Benjamin' },
         { id: 'charles', name: 'Charles' },
         { id: 'claire', name: 'Claire' },
@@ -56,6 +61,7 @@ export const useTTSStore = create((set, get) => ({
         };
 
         set({ audio });
+        set({ audio });
     },
 
     setPlaybackRate: (rate) => {
@@ -63,13 +69,21 @@ export const useTTSStore = create((set, get) => ({
         const { audio } = get();
         if (audio) {
             audio.playbackRate = rate;
-            audio.defaultPlaybackRate = rate; // Specifically for iOS/Safari sometimes
+            audio.defaultPlaybackRate = rate;
+        }
+    },
+
+    setVolume: (volume) => {
+        set({ volume });
+        const { audio } = get();
+        if (audio) {
+            audio.volume = volume;
         }
     },
 
     setVoice: (voice) => set({ voice, audioCache: new Map() }), // Clear cache on change
 
-    playArticle: async (blocks, startIndex = 0) => {
+    playArticle: async (blocks, startIndex = 0, metadata = null) => {
         const { initAudio, playBlock, stop } = get();
         stop(); // Ensure clean state before starting new article
         initAudio();
@@ -79,7 +93,8 @@ export const useTTSStore = create((set, get) => ({
             currentBlockIndex: startIndex,
             isPlaying: true,
             isPaused: false,
-            error: null
+            error: null,
+            articleMetadata: metadata
         });
 
         await playBlock(startIndex);
@@ -88,7 +103,8 @@ export const useTTSStore = create((set, get) => ({
     // Helper to fetch audio blob
     fetchAudio: async (text, signal) => {
         const { voice, playbackRate } = get();
-        const { apiKey, voiceApiKey, apiBase } = useAIStore.getState();
+        const { apiKey, voiceApiKey, apiBase, audioModel } = useAIStore.getState();
+        const { token: appToken } = useAuthStore.getState();
         const token = voiceApiKey || apiKey;
 
         if (!token) throw new Error("Missing API Key");
@@ -104,16 +120,23 @@ export const useTTSStore = create((set, get) => ({
 
         const makeRequest = async (retries = 3, delay = 1000) => {
             try {
+                // Construct voice param. If it's IndexTTS, it often needs the prefix. 
+                // For valid OpenAI generic, it might just need the voice name. 
+                // We keep the prefix behavior if the model matches, or we can genericize it.
+                // Assuming SiliconFlow pattern 'Model:Voice'.
+                const voiceParam = `${audioModel}:${voice.toLowerCase()}`;
+
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
+                        'X-App-Token': appToken,
                     },
                     body: JSON.stringify({
-                        model: 'IndexTeam/IndexTTS-2',
+                        model: audioModel,
                         input: text,
-                        voice: `IndexTeam/IndexTTS-2:${voice.toLowerCase()}`,
+                        voice: voiceParam,
                         response_format: 'mp3',
                         speed: playbackRate
                     }),
@@ -218,6 +241,7 @@ export const useTTSStore = create((set, get) => ({
             if (audio) {
                 audio.src = audioUrl;
                 audio.playbackRate = playbackRate;
+                audio.volume = get().volume;
                 await audio.play();
             }
 
@@ -294,16 +318,28 @@ export const useTTSStore = create((set, get) => ({
         get().playBlock(Math.max(0, currentBlockIndex - 1));
     },
 
-    togglePlayPause: () => {
-        const { isPlaying, isPaused, audio } = get();
-        if (!audio) return;
-
-        if (isPlaying && !isPaused) {
+    pause: () => {
+        const { audio, isPlaying } = get();
+        if (isPlaying && audio) {
             audio.pause();
             set({ isPaused: true });
-        } else if (isPlaying && isPaused) {
+        }
+    },
+
+    resume: () => {
+        const { audio, isPlaying, isPaused } = get();
+        if (isPlaying && isPaused && audio) {
             audio.play();
             set({ isPaused: false });
+        }
+    },
+
+    togglePlayPause: () => {
+        const { isPlaying, isPaused } = get();
+        if (isPlaying && !isPaused) {
+            get().pause();
+        } else if (isPlaying && isPaused) {
+            get().resume();
         }
     },
 

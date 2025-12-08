@@ -43,23 +43,43 @@ A modern, personal RSS reader application built with React and Node.js, designed
 - **Z Summary (Article View)**: Automatically generates a concise 3-sentence summary with tags for articles, helping you grasp the core content quickly.
 - **AI Unread Summary (Shortcut: `Z` or `]`)**: Analyzes all your unread articles and synthesizes them into an intelligent news digest. It identifies common themes, trends, and connections across articles, presenting key highlights and notable insights. Clickable references let you jump directly to any mentioned article.
 
+## Reading Features
+
+- **Listen Article**: Convert article text to speech with a single click. Enjoy hands-free reading with our integrated audio player.
+- **Highlight & Annotation**:
+  - **Highlight**: Press `h` to highlight the currently focused block or your selected text.
+  - **Annotation**: Press `n` to highlight and annotate the currently focused block or your selected text.
+  - *Note*: Highlights and annotations are **temporary** and will not be saved persistently within the app once you navigate away. To save them, please use the **Obsidian Clipper Integration**.
+
+## Obsidian Clipper Integration
+
+Since highlights and annotations in Zeader are temporary, we recommend using the [Obsidian Web Clipper](https://obsidian.md/clipper) to save your annotated articles directly to your Obsidian vault.
+
+**Configuration:**
+
+1.  We provide a recommended configuration file: `zeader-clipper.json`.
+2.  Import this configuration into your Obsidian Web Clipper.
+3.  **Important**: Ensure you add your Zeader URL (e.g., `http://localhost:5173/`) to the "Triggers" list in the Clipper settings. This allows the clipper to automatically recognize Zeader pages.
+
 
 ## Keyboard Shortcuts
 
 Master these shortcuts to navigate Zeader like a pro:
 
 ### Global
-| Key  | Action                                  |
-| :--- | :-------------------------------------- |
-| `[`  | Toggle Sidebar                          |
-| `]`  | Toggle AI Unread Summary Panel          |
-| `1`  | Switch to Article View (All Articles)   |
-| `2`  | Switch to Photo View (All Photos)       |
-| `3`  | Switch to Video View (All Videos)       |
+| Key  | Action                                |
+| :--- | :------------------------------------ |
+| `[`  | Toggle Sidebar                        |
+| `]`  | Toggle AI Unread Summary Panel        |
+| `1`  | Switch to Article View (All Articles) |
+| `2`  | Switch to Photo View (All Photos)     |
+| `3`  | Switch to Video View (All Videos)     |
 
 ### Article View
 | Key       | Action                                |
 | :-------- | :------------------------------------ |
+| `h`       | Highlight selected text / block       |
+| `n`       | Annotate selected text / block        |
 | `↑` / `↓` | Navigate through the article list     |
 | `Enter`   | Open the selected article             |
 | `Space`   | Mark current as read and move to next |
@@ -121,7 +141,7 @@ npm run dev
 ```
 
 - Frontend will be available at `http://localhost:5173`
-- Backend API runs on `http://localhost:3001`
+- Backend API runs on `http://localhost:5200`
 
 ## Deployment
 
@@ -149,9 +169,9 @@ To deploy Zeader on a server, follow these steps:
     ```bash
     npm start
     ```
-    The server will start on port 3001 by default. You can access the application at `http://your-server-ip:3001`.
+    The server will start on port 5200 by default. You can access the application at `http://your-server-ip:5200`.
 
-    > **Note**: In production, the backend server (port 3001) serves the built frontend files. This is different from development mode where Vite uses port 5173.
+    > **Note**: In production, the backend server (port 5200) serves the built frontend files. This is different from development mode where Vite uses port 5173.
 
     *Optional*: You can set the `PORT` and `PASSWORD` environment variables to customize the port and enable password protection.
     ```bash

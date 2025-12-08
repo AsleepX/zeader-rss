@@ -1,0 +1,58 @@
+{
+	"schemaVersion": "0.1.0",
+	"name": "Zeader",
+	"behavior": "create",
+	"noteContentFormat": "\n# {{meta:name:z-title}}\n\nSummary: {{meta:name:summary}}\n\n{{meta:name:article-content}}",
+	"properties": [
+		{
+			"name": "area",
+			"value": "[[Clip]]",
+			"type": "text"
+		},
+		{
+			"name": "status",
+			"value": "DOING",
+			"type": "text"
+		},
+		{
+			"name": "createTime",
+			"value": "{{time}}",
+			"type": "datetime"
+		},
+		{
+			"name": "doneTime",
+			"value": "",
+			"type": "datetime"
+		},
+		{
+			"name": "site",
+			"value": "{{meta:name:site}}",
+			"type": "text"
+		},
+		{
+			"name": "published_time",
+			"value": "{{meta:name:published}}",
+			"type": "text"
+		},
+		{
+			"name": "source",
+			"value": "{{meta:name:source}}",
+			"type": "text"
+		},
+		{
+			"name": "tags",
+			"value": "{{meta:name:tags}}",
+			"type": "multitext"
+		},
+		{
+			"name": "archived",
+			"value": "",
+			"type": "checkbox"
+		}
+	],
+	"triggers": [
+		"http://localhost:5173/"
+	],
+	"noteNameFormat": "{{meta:name:title}}",
+	"path": "Clippings"
+}
