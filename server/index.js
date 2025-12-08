@@ -338,8 +338,21 @@ const handleAIProxy = async (req, res, targetBaseUrl) => {
             }
         } else {
             // Handle non-streaming response
-            const data = await response.json();
-            res.status(response.status).json(data);
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                res.status(response.status).json(data);
+            } else {
+                // Handle binary/other content (e.g. TTS audio)
+                const arrayBuffer = await response.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+
+                res.status(response.status);
+                if (contentType) {
+                    res.set('Content-Type', contentType);
+                }
+                res.send(buffer);
+            }
         }
     } catch (error) {
         console.error('AI Proxy Error:', error);
