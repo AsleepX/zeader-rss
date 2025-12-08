@@ -188,43 +188,9 @@ npm run dev
 
 ### 部署到 Zeabur
 
-如果你选择手动部署到 Zeabur，请按照以下步骤操作：
+您可以点击下方按钮一键部署 Zeader 到 Zeabur：
 
-[注册/登录](https://zeabur.com/referral?referralCode=AsleepX)：访问 Zeabur 并使用你的 GitHub 账号登录。
-
-Fork 项目：在本项目 GitHub 页面右上角点击 Fork 按钮，将仓库复制到你自己的账号下。
-
-创建服务：
-
-在 Zeabur 控制台点击 Create Project (创建项目)。
-
-点击 Deploy New Service (新建服务)，选择 Git，然后选中你刚刚 Fork 的 zeader-rss 仓库。
-
-项目配置（关键步骤）： 进入刚刚创建的服务页面，进行以下设置：
-
-持久化存储 (Volumes)：点击 Settings (设置) 标签页 -> Volumes (挂载卷)。点击添加挂载卷：
-
-- 名称：任意填写（例如 zeader-data）。
-
-- 挂载路径：必须填入 /app/data。（这一步是为了确保你的数据不会丢失）。
-
-环境变量 (Variables)：点击 Variables 标签页。
-
-- 键 (Key): `DATA_DIR`
-
-  - 值 (Value): `/app/data`（告诉应用使用挂载卷来存储数据）。
-
-- 键 (Key): `PASSWORD`
-
-  - 值 (Value): 设置你的访问密码。
-
-生成域名：
-
-点击 Networking (域名) 标签页。
-
-点击 Generate Domain (生成域名) 或绑定自定义域名。
-
-访问生成的网址即可开始使用 Zeader！
+[![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates/4LNLFV)
 
 ## 项目结构
 
