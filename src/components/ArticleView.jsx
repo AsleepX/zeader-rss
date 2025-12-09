@@ -275,7 +275,19 @@ function ArticleDetail({ article, onBack }) {
 
   // Translation state
   const [translations, setTranslations] = useState({}); // { blockIndex: translatedText }
-  const [translatingIndex, setTranslatingIndex] = useState(null); // Currently translating block index
+  const [fullTranslationCache, setFullTranslationCache] = useState({}); // Cache for full article translation
+  const [isFullTranslationMode, setIsFullTranslationMode] = useState(false);
+  const shouldShowTranslationsRef = useRef(false); // Ref to track visibility for async updates
+  const [translatingIndices, setTranslatingIndices] = useState(new Set()); // Currently translating block indices
+
+  // Reset states when article changes
+  useEffect(() => {
+    setTranslations({});
+    setFullTranslationCache({});
+    setIsFullTranslationMode(false);
+    shouldShowTranslationsRef.current = false;
+    setTranslatingIndices(new Set());
+  }, [article.id]);
 
   // Highlight state (temporary, not persisted)
   const [highlightedBlocks, setHighlightedBlocks] = useState(new Set()); // Set of highlighted block indices
@@ -311,7 +323,6 @@ function ArticleDetail({ article, onBack }) {
       }
     };
 
-    // Use requestAnimationFrame to ensure DOM has updated after translation changes
     const rafId = requestAnimationFrame(updateHighlight);
     window.addEventListener('resize', updateHighlight);
     return () => {
@@ -319,6 +330,10 @@ function ArticleDetail({ article, onBack }) {
       window.removeEventListener('resize', updateHighlight);
     };
   }, [selectedBlockIndex, contentBlocks, translations]);
+
+  // AI Annotation State
+  const [isGeneratingAnnotation, setIsGeneratingAnnotation] = useState(false);
+  const [pendingSelectionAnnotationId, setPendingSelectionAnnotationId] = useState(null); // Auto-select new annotation
   const scrollContainerRef = useRef(null); // 添加滚动容器的引用
   const isUserScrolling = useRef(false);
   const scrollTimeout = useRef(null);
@@ -548,6 +563,7 @@ Summary: 三句话摘要
     blockRefs.current = [];
   }, [fullContent, article.content, article.contentSnippet, shouldLoadFullContent, isLoading]);
 
+
   // Translate current block function
   const translateBlock = useCallback(async (blockIndex) => {
     const block = contentBlocks[blockIndex];
@@ -564,12 +580,16 @@ Summary: 三句话摘要
     }
 
     // Skip if already translating this block
-    if (translatingIndex === blockIndex) return;
+    if (translatingIndices.has(blockIndex)) return;
 
     // Skip image blocks
     if (block.type === 'img') return;
 
-    setTranslatingIndex(blockIndex);
+    setTranslatingIndices(prev => {
+      const next = new Set(prev);
+      next.add(blockIndex);
+      return next;
+    });
 
     try {
       const prompt = `You are a professional translator. Translate the following text to ${language}. Only output the translated text, without any explanation or additional content.
@@ -586,9 +606,88 @@ ${block.text}`;
     } catch (error) {
       console.error('Translation error:', error);
     } finally {
-      setTranslatingIndex(null);
+      setTranslatingIndices(prev => {
+        const next = new Set(prev);
+        next.delete(blockIndex);
+        return next;
+      });
     }
-  }, [contentBlocks, translations, translatingIndex, language, generateText]);
+  }, [contentBlocks, translations, translatingIndices, language, generateText]);
+
+  // Translate full article function
+  const translateFullArticle = useCallback(async () => {
+    if (isFullTranslationMode) {
+      // Toggle OFF: Cache current translations and clear visible logic
+      setFullTranslationCache(prev => ({ ...prev, ...translations }));
+      setTranslations({});
+      setIsFullTranslationMode(false);
+      shouldShowTranslationsRef.current = false;
+      return;
+    }
+
+    // Toggle ON: Restore from cache and translate missing parts
+    setIsFullTranslationMode(true);
+    shouldShowTranslationsRef.current = true;
+    setTranslations(prev => ({ ...prev, ...fullTranslationCache }));
+
+    // Identify blocks that need translation
+    const blocksToTranslate = contentBlocks
+      .map((block, index) => ({ block, index }))
+      .filter(({ block, index }) =>
+        block &&
+        block.text?.trim() &&
+        block.type !== 'img' &&
+        translations[index] === undefined &&
+        fullTranslationCache[index] === undefined &&
+        !translatingIndices.has(index)
+      );
+
+    if (blocksToTranslate.length === 0) return;
+
+    // Set all to translating
+    setTranslatingIndices(prev => {
+      const next = new Set(prev);
+      blocksToTranslate.forEach(({ index }) => next.add(index));
+      return next;
+    });
+
+    // Process all translations
+    // We launch all requests in parallel
+    const promises = blocksToTranslate.map(async ({ block, index }) => {
+      try {
+        const prompt = `You are a professional translator. Translate the following text to ${language}. Only output the translated text, without any explanation or additional content.
+
+Text to translate:
+${block.text}`;
+
+        const translatedText = await generateText(prompt, { temperature: 0 });
+
+        // Update cache as well
+        setFullTranslationCache(prev => ({
+          ...prev,
+          [index]: translatedText.trim()
+        }));
+
+        // Only update visible translations if still in full mode
+        if (shouldShowTranslationsRef.current) {
+          setTranslations(prev => ({
+            ...prev,
+            [index]: translatedText.trim()
+          }));
+        }
+      } catch (error) {
+        console.error(`Translation error for block ${index}:`, error);
+      } finally {
+        setTranslatingIndices(prev => {
+          const next = new Set(prev);
+          next.delete(index);
+          return next;
+        });
+      }
+    });
+
+    await Promise.all(promises);
+  }, [contentBlocks, translations, fullTranslationCache, translatingIndices, isFullTranslationMode, language, generateText]);
 
   // Handle Edit Annotation
   const handleEditAnnotation = useCallback((annotationId, e) => {
@@ -686,11 +785,34 @@ ${block.text}`;
 
     document.addEventListener('click', handleClick, true);
     return () => document.removeEventListener('click', handleClick, true);
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
   }, [selectedHighlightMark, handleEditAnnotation]);
 
+  // Auto-select newly created annotation
+  useEffect(() => {
+    if (pendingSelectionAnnotationId !== null) {
+      // Find the mark for this annotation
+      const mark = document.querySelector(`mark[data-annotation-id="${pendingSelectionAnnotationId}"]`);
+      if (mark) {
+        // Apply visual selection
+        mark.classList.add('zeader-highlight-selected');
+        // Update state
+        setSelectedHighlightMark(mark);
+        // Clear pending
+        setPendingSelectionAnnotationId(null);
+      }
+    }
+  }); // Run on every render to catch when the new mark appears in the DOM
+
   // Handle Save Annotation
-  const handleSaveAnnotation = (text) => {
-    const { blockIndex, type, editingAnnotationId } = popoverState;
+  const handleSaveAnnotation = (text, overrides = null) => {
+    // defaults from popoverState, but allow overrides for async AI calls
+    const blockIndex = overrides ? overrides.blockIndex : popoverState.blockIndex;
+    const type = overrides ? overrides.type : popoverState.type;
+    const editingAnnotationId = overrides ? overrides.editingAnnotationId : popoverState.editingAnnotationId;
+    const top = overrides ? overrides.top : popoverState.position.top;
+
     if (blockIndex === -1) return;
 
     // Check if text is empty - if so, delete the annotation (or don't create it)
@@ -771,7 +893,7 @@ ${block.text}`;
       id: annotationId,
       text,
       blockIndex,
-      top: popoverState.position.top,  // Already calculated relative to article container
+      top: top,  // Use the resolved top position
       type  // Store type for deletion handling
     };
 
@@ -839,7 +961,12 @@ ${block.text}`;
       }
     }
 
-    // 3. Update Annotations State
+    // 4. Update Pending Selection (to auto-select after render)
+    if (type === 'selection') {
+      setPendingSelectionAnnotationId(annotationId);
+    }
+
+    // 5. Update Annotations State
     setAnnotations(prev => [...prev, annotation]);
     setPopoverState(prev => ({ ...prev, isOpen: false }));
     pendingMarkRef.current = null;
@@ -932,6 +1059,147 @@ ${block.text}`;
       });
     }
   }, [annotations]);
+
+  // Handle AI Annotation
+  const handleAIAnnotation = useCallback(async () => {
+    if (isGeneratingAnnotation) return;
+
+    let targetText = '';
+    let contextText = '';
+    let targetType = 'block';
+    let targetBlockIndex = -1;
+
+    // 1. Check for Selection
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim()) {
+      targetText = selection.toString().trim();
+      targetType = 'selection';
+
+      // Verify we are in the article content
+      const range = selection.getRangeAt(0);
+      const articleEl = contentRef.current;
+      if (!articleEl || !articleEl.contains(range.commonAncestorContainer)) return;
+
+      // Create Highlight (Visually Select)
+      try {
+        const mark = document.createElement('mark');
+        mark.className = 'zeader-highlight'; // Note: NO 'zeader-highlight-selected' here! We rely on auto-selection state.
+        range.surroundContents(mark);
+        selection.removeAllRanges();
+
+        pendingMarkRef.current = mark;
+
+        // Find block index for insertion tracking
+        blockRefs.current.forEach((el, idx) => {
+          if (el && el.contains(mark)) targetBlockIndex = idx;
+        });
+
+        if (targetBlockIndex !== -1 && contentBlocks[targetBlockIndex]) {
+          const fullBlockText = contentBlocks[targetBlockIndex].text;
+          if (fullBlockText && fullBlockText.trim() !== targetText) {
+            contextText = fullBlockText.trim();
+          }
+        }
+
+      } catch (e) {
+        console.warn('Could not highlight for AI annotation', e);
+        return;
+      }
+    } else {
+      // 2. Fallback to Current Block
+      if (selectedBlockIndex >= 0 && contentBlocks[selectedBlockIndex]) {
+        targetText = contentBlocks[selectedBlockIndex].text;
+        targetBlockIndex = selectedBlockIndex;
+        targetType = 'block';
+
+        // Highlight block
+        setHighlightedBlocks(prev => {
+          const next = new Set(prev);
+          next.add(targetBlockIndex);
+          return next;
+        });
+      }
+    }
+
+    if (!targetText || targetBlockIndex === -1) return;
+
+    // 3. Prepare State for Saving
+    // We set popoverState with Open=false so handleSaveAnnotation knows where to save
+    // but the popover doesn't show up to interrupt the "Generation" UI.
+    const articleEl = contentRef.current;
+    let top = 0;
+    if (targetType === 'selection' && pendingMarkRef.current) {
+      const markRect = pendingMarkRef.current.getBoundingClientRect();
+      const articleRect = articleEl.getBoundingClientRect();
+      top = markRect.top - articleRect.top;
+    } else if (targetType === 'block' && blockRefs.current[targetBlockIndex]) {
+      const blockRect = blockRefs.current[targetBlockIndex].getBoundingClientRect();
+      const articleRect = articleEl.getBoundingClientRect();
+      top = blockRect.top - articleRect.top;
+    }
+
+    setPopoverState({
+      isOpen: false,
+      position: { top, left: '100%' },
+      blockIndex: targetBlockIndex,
+      type: targetType,
+      initialText: ''
+    });
+
+    // 4. Generate Annotation
+    setIsGeneratingAnnotation(true);
+
+    try {
+      const prompt = `Role: Advanced Language Assistant
+Input: ${targetText}
+${contextText ? `Context: ${contextText}\n` : ''}
+Instruction: Analyze the input${contextText ? ' (using the provided Context for background information)' : ''} and strictly follow the rules below based on the input type:
+
+Case 1: [Single English Word]
+Output Format:
+**Word**: [Word] [IPA Pronunciation]
+**Definition**: [Definition in ${language}]
+
+Case 2: [English Sentence/Paragraph]
+Action: Translate into fluent, elegant ${language}.
+
+Case 3: [${language} Text]
+Action: Translate into authentic, high-quality English.
+`;
+
+      const result = await generateText(prompt);
+
+      // Pass the calculated metadata directly to save function
+      const metaOverrides = {
+        blockIndex: targetBlockIndex,
+        type: targetType,
+        top: top,
+        editingAnnotationId: null // always new for AI
+      };
+
+      if (result) {
+        handleSaveAnnotation(result.trim(), metaOverrides);
+      } else {
+        // If no result, cancel the operation
+        handleSaveAnnotation('', metaOverrides); // Sending empty text cancels/deletes
+      }
+    } catch (error) {
+      console.error('AI Annotation Error:', error);
+
+      const metaOverrides = {
+        blockIndex: targetBlockIndex,
+        type: targetType,
+        top: top,
+        editingAnnotationId: null
+      };
+
+      // Clean up on error
+      handleSaveAnnotation('', metaOverrides);
+    } finally {
+      setIsGeneratingAnnotation(false);
+    }
+
+  }, [isGeneratingAnnotation, contentBlocks, selectedBlockIndex, language, generateText, handleSaveAnnotation, highlightedBlocks]);
 
   // Highlight selected text or current block
   const highlightContent = useCallback((targetBlockIndex = -1, openPopover = false) => {
@@ -1155,8 +1423,16 @@ ${block.text}`;
 
       // Translate current block on 't' or 'T' key press
       if (e.key === 't' || e.key === 'T') {
-        if (isAIEnabled && selectedBlockIndex >= 0 && contentBlocks[selectedBlockIndex]) {
-          translateBlock(selectedBlockIndex);
+        if (e.shiftKey) {
+          // Shift+T: Translate full article
+          if (isAIEnabled) {
+            translateFullArticle();
+          }
+        } else {
+          // T: Translate current block
+          if (isAIEnabled && selectedBlockIndex >= 0 && contentBlocks[selectedBlockIndex]) {
+            translateBlock(selectedBlockIndex);
+          }
         }
         return;
       }
@@ -1165,6 +1441,14 @@ ${block.text}`;
       if (e.key === 'o' || e.key === 'O') {
         if (article.link) {
           window.open(article.link, '_blank', 'noopener,noreferrer');
+        }
+        return;
+      }
+
+      // AI Annotation on 'z' key press
+      if (e.key === 'z' || e.key === 'Z') {
+        if (isAIEnabled) {
+          handleAIAnnotation();
         }
         return;
       }
@@ -1190,7 +1474,7 @@ ${block.text}`;
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack, contentBlocks.length, article.link, translateBlock, highlightContent, isAIEnabled, selectedBlockIndex, contentBlocks, handleDeleteAnnotation, annotations, selectedHighlightMark]);
+  }, [onBack, contentBlocks.length, article.link, translateBlock, translateFullArticle, highlightContent, isAIEnabled, selectedBlockIndex, contentBlocks, handleDeleteAnnotation, annotations, selectedHighlightMark, isGeneratingAnnotation]); // Added translateFullArticle
 
   // Auto-scroll selected block to center
   useEffect(() => {
@@ -1402,7 +1686,7 @@ ${block.text}`;
                 <MemoizedContentBlock
                   html={block.html}
                   translation={translations[index]}
-                  isTranslating={translatingIndex === index}
+                  isTranslating={translatingIndices.has(index)}
                   isHighlighted={highlightedBlocks.has(index)}
                   isReading={isTTSPlaying && ttsBlockIndex === index}
                 />
@@ -1438,6 +1722,27 @@ ${block.text}`;
           {/* Hidden Footnotes Section for Clipper */}
           <div dangerouslySetInnerHTML={{ __html: generateFootnotesSection(annotations) }} />
         </article>
+
+        {/* AI Annotation Generatng Notification */}
+        <AnimatePresence>
+          {isGeneratingAnnotation && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 bg-white border border-gray-100 rounded-xl shadow-xl shadow-primary-500/10"
+            >
+              <div className="relative">
+                <div className="w-2.5 h-2.5 bg-primary-500 rounded-full animate-ping absolute inset-0 opacity-75"></div>
+                <div className="w-2.5 h-2.5 bg-primary-500 rounded-full relative"></div>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-gray-900">AI Annotation</span>
+                <span className="text-xs text-gray-500">Generating...</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -1475,14 +1780,18 @@ export function ArticleView({ feeds }) {
       }
 
       // Toggle AI Summary Panel on 'z' or ']' key press
-      if (e.key === 'z' || e.key === 'Z' || e.key === ']') {
+      // Only allow in list view (when no article is selected)
+      if ((e.key === 'z' || e.key === 'Z') && !selectedArticle) {
         setIsAISummaryOpen(prev => !prev);
       }
+      // Keep ']' as a global toggle if desired, or restrict it too. 
+      // Assuming ']' should also be restricted to avoid conflicts or confusion, 
+      // but user only mentioned 'z'. Let's restrict 'z' specifically for the new feature in Detail view.
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isAISummaryOpen]);
+  }, [isAISummaryOpen, selectedArticle]);
 
   const allItems = feeds.flatMap(feed =>
     feed.items.map(item => ({ ...item, feedTitle: feed.title, feedId: feed.id }))

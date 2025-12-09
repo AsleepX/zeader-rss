@@ -32,6 +32,14 @@ export function AnnotationPopover({ position, onSave, onCancel, initialText = ''
         };
     }, [onSave, onCancel, text]);
 
+    // Auto-adjust height
+    useEffect(() => {
+        if (inputRef.current) {
+            inputRef.current.style.height = 'auto';
+            inputRef.current.style.height = inputRef.current.scrollHeight + 'px';
+        }
+    }, [text]);
+
     const handleKeyDown = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -59,8 +67,7 @@ export function AnnotationPopover({ position, onSave, onCancel, initialText = ''
                     onChange={(e) => setText(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Add a note..."
-                    className="w-full p-2 text-sm font-sans leading-5 align-top block m-0 border border-transparent rounded-md focus:border-transparent focus:ring-0 resize-none outline-none"
-                    rows={3}
+                    className="w-full p-2 text-sm font-sans leading-5 align-top block m-0 border border-transparent rounded-md focus:border-transparent focus:ring-0 resize-none outline-none overflow-hidden"
                 />
             </div>
             <div className="flex justify-end gap-2">
