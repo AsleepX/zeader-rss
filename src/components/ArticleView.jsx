@@ -48,10 +48,13 @@ function ArticleList({ articles, onSelectArticle, initialSelectedId, onMarkAsRea
   const itemRefs = useRef([]);
   const [highlightStyle, setHighlightStyle] = useState({ top: 0, height: 0, opacity: 0 });
   const isKeyboardNav = useRef(initialIndex >= 0);
+  const [isKeyboardNavState, setIsKeyboardNavState] = useState(initialIndex >= 0);
+  const navDirection = useRef(null); // 'up' or 'down'
 
   useEffect(() => {
     const handleMouseMove = () => {
       isKeyboardNav.current = false;
+      setIsKeyboardNavState(false);
     };
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
@@ -80,16 +83,19 @@ function ArticleList({ articles, onSelectArticle, initialSelectedId, onMarkAsRea
     const handleKeyDown = (e) => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         isKeyboardNav.current = true;
+        setIsKeyboardNavState(true);
       }
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();
+        navDirection.current = 'down';
         setSelectedIndex(prev => {
           const next = prev + 1;
           return next < articles.length ? next : prev;
         });
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
+        navDirection.current = 'up';
         setSelectedIndex(prev => {
           const next = prev - 1;
           return next >= 0 ? next : prev;
@@ -114,8 +120,42 @@ function ArticleList({ articles, onSelectArticle, initialSelectedId, onMarkAsRea
   }, [articles, selectedIndex, onSelectArticle, onMarkAsRead]);
 
   useEffect(() => {
-    if (selectedIndex >= 0 && itemRefs.current[selectedIndex]) {
-      itemRefs.current[selectedIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (selectedIndex >= 0 && itemRefs.current[selectedIndex] && navDirection.current) {
+      const currentEl = itemRefs.current[selectedIndex];
+      const container = currentEl.closest('.overflow-y-auto') || window;
+      const isWindow = container === window;
+      
+      const containerRect = isWindow 
+        ? { top: 0, bottom: window.innerHeight, height: window.innerHeight }
+        : container.getBoundingClientRect();
+      const elRect = currentEl.getBoundingClientRect();
+      
+      // Calculate buffer - roughly one item height
+      const buffer = elRect.height + 16;
+      
+      if (navDirection.current === 'down') {
+        // When going down, keep item away from bottom edge
+        const bottomThreshold = containerRect.bottom - buffer;
+        if (elRect.bottom > bottomThreshold) {
+          const scrollAmount = elRect.bottom - bottomThreshold;
+          if (isWindow) {
+            window.scrollBy({ top: scrollAmount, behavior: 'instant' });
+          } else {
+            container.scrollBy({ top: scrollAmount, behavior: 'instant' });
+          }
+        }
+      } else if (navDirection.current === 'up') {
+        // When going up, keep item away from top edge
+        const topThreshold = containerRect.top + buffer;
+        if (elRect.top < topThreshold) {
+          const scrollAmount = elRect.top - topThreshold;
+          if (isWindow) {
+            window.scrollBy({ top: scrollAmount, behavior: 'instant' });
+          } else {
+            container.scrollBy({ top: scrollAmount, behavior: 'instant' });
+          }
+        }
+      }
     }
   }, [selectedIndex]);
 
@@ -148,7 +188,7 @@ function ArticleList({ articles, onSelectArticle, initialSelectedId, onMarkAsRea
                 setSelectedIndex(index);
               }
             }}
-            className={`group flex gap-2 md:gap-3 px-3 md:px-6 py-3 cursor-pointer relative z-10 mb-2 rounded-lg transition-colors duration-200 ${index === selectedIndex ? '' : 'hover:bg-gray-50'
+            className={`group flex gap-2 md:gap-3 px-3 md:px-6 py-3 cursor-pointer relative z-10 mb-2 rounded-lg transition-colors duration-200 ${index === selectedIndex ? '' : (isKeyboardNavState ? '' : 'hover:bg-gray-50')
               }`}
           >
             {/* Thumbnail */}
@@ -338,6 +378,7 @@ function ArticleDetail({ article, onBack }) {
   const isUserScrolling = useRef(false);
   const scrollTimeout = useRef(null);
   const shouldAutoScroll = useRef(false);
+  const isKeyboardNavigating = useRef(false); // Track keyboard navigation to prevent scroll handler interference
 
   const feed = feeds.find(f => f.id === article.feedId);
   const shouldLoadFullContent = feed?.loadFullContent;
@@ -443,8 +484,16 @@ Summary: 三句话摘要
     generateZymal();
   }, [article, fullContent, shouldLoadFullContent, language, generateText, isAIEnabled]);
 
+  // Helper to check if URL is from Twitter/X
+  const isTwitterUrl = (url) => {
+    if (!url) return false;
+    return url.includes('twitter.com') || url.includes('x.com') || url.includes('twimg.com');
+  };
+
   useEffect(() => {
-    if (!shouldLoadFullContent) {
+    // Skip full content fetch for Twitter - RSS content is already complete
+    // and Readability cannot properly parse Twitter pages
+    if (!shouldLoadFullContent || isTwitterUrl(article.link)) {
       setFullContent(null);
       setIsLoading(false);
       return;
@@ -487,6 +536,112 @@ Summary: 三句话摘要
     const doc = parser.parseFromString(contentToDisplay, 'text/html');
     const blocks = [];
 
+    // Pre-process: wrap loose text nodes and <br> tags into <p> elements
+    // This handles Twitter-style content where text is not wrapped in paragraphs
+    // Split into multiple paragraphs when encountering double <br> (empty lines)
+    // Maintains original order for complex structures like: text + image + text + image
+    const wrapLooseTextNodes = (parentNode) => {
+      const childNodes = Array.from(parentNode.childNodes);
+      let currentParagraph = [];
+      let consecutiveBrCount = 0;
+      const newChildren = []; // Rebuild children in correct order
+      
+      const flushParagraph = () => {
+        if (currentParagraph.length > 0) {
+          // Check if there's actual text content (not just br tags)
+          const hasText = currentParagraph.some(node => {
+            if (node.nodeType === Node.TEXT_NODE) {
+              return node.textContent.trim().length > 0;
+            }
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const tag = node.tagName.toLowerCase();
+              if (tag !== 'br') {
+                return node.textContent.trim().length > 0;
+              }
+            }
+            return false;
+          });
+          
+          if (hasText) {
+            const p = doc.createElement('p');
+            // Remove trailing br tags
+            while (currentParagraph.length > 0) {
+              const lastNode = currentParagraph[currentParagraph.length - 1];
+              if (lastNode.nodeType === Node.ELEMENT_NODE && lastNode.tagName.toLowerCase() === 'br') {
+                currentParagraph.pop();
+              } else {
+                break;
+              }
+            }
+            // Remove leading br tags
+            while (currentParagraph.length > 0) {
+              const firstNode = currentParagraph[0];
+              if (firstNode.nodeType === Node.ELEMENT_NODE && firstNode.tagName.toLowerCase() === 'br') {
+                currentParagraph.shift();
+              } else {
+                break;
+              }
+            }
+            
+            if (currentParagraph.length > 0) {
+              currentParagraph.forEach(node => {
+                p.appendChild(node.cloneNode(true));
+              });
+              newChildren.push(p);
+            }
+          }
+          currentParagraph = [];
+        }
+        consecutiveBrCount = 0;
+      };
+      
+      childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          // Check if text is just whitespace between elements
+          if (node.textContent.trim().length > 0) {
+            consecutiveBrCount = 0;
+            currentParagraph.push(node);
+          } else if (currentParagraph.length > 0) {
+            // Keep whitespace within a paragraph for spacing
+            currentParagraph.push(node);
+          }
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          const tagName = node.tagName.toLowerCase();
+          
+          if (tagName === 'br') {
+            consecutiveBrCount++;
+            // Two or more consecutive <br> = paragraph break
+            if (consecutiveBrCount >= 2) {
+              flushParagraph();
+            } else {
+              currentParagraph.push(node);
+            }
+          } else if (tagName === 'a' || tagName === 'span' || tagName === 'strong' || tagName === 'em' || tagName === 'b' || tagName === 'i' || tagName === 'code') {
+            // Inline elements - add to current paragraph
+            consecutiveBrCount = 0;
+            currentParagraph.push(node);
+          } else {
+            // Block-level element (img, video, div, etc.) - flush paragraph first, then add the element
+            flushParagraph();
+            newChildren.push(node.cloneNode(true));
+          }
+        }
+      });
+      
+      // Flush any remaining content
+      flushParagraph();
+      
+      // Clear parent and rebuild with new children in correct order
+      while (parentNode.firstChild) {
+        parentNode.removeChild(parentNode.firstChild);
+      }
+      newChildren.forEach(child => {
+        parentNode.appendChild(child);
+      });
+    };
+    
+    wrapLooseTextNodes(doc.body);
+
     // Recursively extract meaningful content blocks
     // Helper to remove placeholder images from a node
     const removePlaceholderImages = (node) => {
@@ -514,14 +669,14 @@ Summary: 三句话摘要
         // These are actual content blocks - don't recurse into them
         if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'blockquote', 'pre', 'figure', 'iframe'].includes(tagName)) {
           // Skip empty paragraphs
-          if (tagName === 'p' && !node.textContent.trim() && !node.querySelector('img')) {
+          if (tagName === 'p' && !node.textContent.trim() && !node.querySelector('img') && !node.querySelector('video')) {
             return;
           }
           // Clone the node and remove placeholder images before adding to blocks
           const clonedNode = node.cloneNode(true);
           removePlaceholderImages(clonedNode);
           // Skip if after removing placeholders the block is empty
-          if (!clonedNode.textContent.trim() && !clonedNode.querySelector('img')) {
+          if (!clonedNode.textContent.trim() && !clonedNode.querySelector('img') && !clonedNode.querySelector('video')) {
             return;
           }
           blocks.push({
@@ -549,6 +704,60 @@ Summary: 三句话摘要
             html: node.outerHTML,
             text: node.alt || ''
           });
+        }
+        // Handle video elements separately as individual blocks
+        else if (tagName === 'video') {
+          const videoSrc = node.getAttribute('src') || '';
+          const sourceSrc = node.querySelector('source')?.getAttribute('src') || '';
+          const src = videoSrc || sourceSrc;
+          
+          if (src) {
+            // Create a proper video element with controls
+            const clonedNode = node.cloneNode(true);
+            
+            // Check if this is a Twitter video that needs proxying
+            const isTwitterVideo = src.includes('video.twimg.com') || src.includes('twitter.com');
+            
+            if (isTwitterVideo) {
+              // Proxy Twitter videos to bypass CORS
+              const proxiedSrc = `/api/media-proxy?url=${encodeURIComponent(src)}`;
+              
+              // Update the src attribute
+              if (clonedNode.hasAttribute('src')) {
+                clonedNode.setAttribute('src', proxiedSrc);
+              }
+              // Also update source elements if any
+              const sourceElements = clonedNode.querySelectorAll('source');
+              sourceElements.forEach(source => {
+                const sourceSrcAttr = source.getAttribute('src');
+                if (sourceSrcAttr && (sourceSrcAttr.includes('video.twimg.com') || sourceSrcAttr.includes('twitter.com'))) {
+                  source.setAttribute('src', `/api/media-proxy?url=${encodeURIComponent(sourceSrcAttr)}`);
+                }
+              });
+            }
+            
+            // Ensure controls are enabled
+            clonedNode.setAttribute('controls', 'controls');
+            // Remove autoplay to prevent unwanted playback
+            clonedNode.removeAttribute('autoplay');
+            // Remove loop and muted for better user control
+            clonedNode.removeAttribute('loop');
+            clonedNode.removeAttribute('muted');
+            // Add playsinline for mobile
+            clonedNode.setAttribute('playsinline', '');
+            // Add preload metadata
+            clonedNode.setAttribute('preload', 'metadata');
+            // Set reasonable dimensions if not already set
+            if (!clonedNode.getAttribute('style')?.includes('max-width')) {
+              clonedNode.setAttribute('style', (clonedNode.getAttribute('style') || '') + '; max-width: 100%; height: auto;');
+            }
+            
+            blocks.push({
+              type: 'video',
+              html: clonedNode.outerHTML,
+              text: ''
+            });
+          }
         }
         // For wrapper/container elements, recurse into children
         else {
@@ -1456,6 +1665,7 @@ Action: Translate into authentic, high-quality English.
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         shouldAutoScroll.current = true;
+        isKeyboardNavigating.current = true;
         setSelectedBlockIndex(prev => {
           const next = Math.min(prev + 1, contentBlocks.length - 1);
           return next;
@@ -1464,6 +1674,7 @@ Action: Translate into authentic, high-quality English.
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         shouldAutoScroll.current = true;
+        isKeyboardNavigating.current = true;
         setSelectedBlockIndex(prev => {
           const next = Math.max(prev - 1, 0);
           return next;
@@ -1484,6 +1695,11 @@ Action: Translate into authentic, high-quality English.
         block: 'center'
       });
       shouldAutoScroll.current = false;
+      
+      // Reset keyboard navigating flag after scroll animation completes
+      setTimeout(() => {
+        isKeyboardNavigating.current = false;
+      }, 300);
     }
   }, [selectedBlockIndex]);
 
@@ -1493,6 +1709,11 @@ Action: Translate into authentic, high-quality English.
     if (!scrollContainer) return;
 
     const handleScroll = () => {
+      // Don't interfere with keyboard navigation
+      if (isKeyboardNavigating.current) {
+        return;
+      }
+      
       isUserScrolling.current = true;
       shouldAutoScroll.current = false;
 
@@ -1501,6 +1722,11 @@ Action: Translate into authentic, high-quality English.
       }
 
       scrollTimeout.current = setTimeout(() => {
+        // Double-check keyboard navigation hasn't started
+        if (isKeyboardNavigating.current) {
+          return;
+        }
+        
         isUserScrolling.current = false;
 
         // Find the block closest to the center of the viewport
@@ -1659,7 +1885,7 @@ Action: Translate into authentic, high-quality English.
         )}
 
         {/* Article Content */}
-        <article ref={contentRef} className="article-detail-content prose prose-lg prose-slate max-w-none font-serif prose-headings:font-serif prose-a:text-primary-600 prose-img:rounded-xl [&_iframe]:w-full [&_iframe]:!h-auto [&_iframe]:!aspect-[3/2] relative">
+        <article ref={contentRef} className="article-detail-content prose prose-lg prose-slate max-w-none font-serif prose-headings:font-serif prose-a:text-primary-600 prose-img:rounded-xl [&_iframe]:w-full [&_iframe]:!h-auto [&_iframe]:!aspect-[3/2] [&_video]:w-full [&_video]:rounded-xl [&_video]:my-4 relative">
           {/* Highlight Line - Hidden on mobile */}
           <div
             className="absolute -left-6 w-[3.5px] bg-[#76B2ED] transition-all duration-200 ease-out pointer-events-none hidden md:block"

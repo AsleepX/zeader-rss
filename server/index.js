@@ -82,8 +82,9 @@ app.post('/api/login', (req, res) => {
 
 // Apply auth middleware to all API routes except login and static files
 app.use('/api', (req, res, next) => {
-    // Exclude login and proxy routes from global auth middleware
-    if (req.path === '/login') return next();
+    // Exclude login and media-proxy routes from global auth middleware
+    // media-proxy needs to be excluded because browser video players don't send auth headers
+    if (req.path === '/login' || req.path === '/media-proxy') return next();
 
     // For proxy routes, we still want to enforce OUR auth.
     // The authMiddleware now checks X-App-Token, so it should work fine.
@@ -289,6 +290,74 @@ app.get('/api/proxy', async (req, res) => {
     } catch (error) {
         console.error('Proxy error:', error);
         res.status(500).json({ error: 'Failed to fetch URL' });
+    }
+});
+
+// Media proxy endpoint for video/image files (to bypass CORS for Twitter videos etc.)
+app.get('/api/media-proxy', async (req, res) => {
+    const { url } = req.query;
+    if (!url) {
+        return res.status(400).json({ error: 'URL is required' });
+    }
+
+    try {
+        // Build headers for the request
+        const fetchHeaders = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://twitter.com/',
+            'Origin': 'https://twitter.com'
+        };
+
+        // Forward Range header if present (for video seeking)
+        if (req.headers.range) {
+            fetchHeaders['Range'] = req.headers.range;
+        }
+
+        const response = await fetch(url, { headers: fetchHeaders });
+
+        if (!response.ok && response.status !== 206) {
+            return res.status(response.status).send(`Failed to fetch: ${response.statusText}`);
+        }
+
+        const contentType = response.headers.get('content-type');
+        const contentLength = response.headers.get('content-length');
+        const contentRange = response.headers.get('content-range');
+        const acceptRanges = response.headers.get('accept-ranges');
+
+        // Set appropriate headers for media streaming
+        res.status(response.status);
+        res.set('Content-Type', contentType || 'video/mp4');
+        if (contentLength) {
+            res.set('Content-Length', contentLength);
+        }
+        if (contentRange) {
+            res.set('Content-Range', contentRange);
+        }
+        res.set('Accept-Ranges', acceptRanges || 'bytes');
+        res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+
+        // Pipe the response body directly
+        if (response.body) {
+            const reader = response.body.getReader();
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    res.write(value);
+                }
+            } catch (streamError) {
+                console.error('Media stream error:', streamError);
+            } finally {
+                res.end();
+            }
+        } else {
+            // Fallback for non-streaming response
+            const arrayBuffer = await response.arrayBuffer();
+            res.send(Buffer.from(arrayBuffer));
+        }
+    } catch (error) {
+        console.error('Media proxy error:', error);
+        res.status(500).json({ error: 'Failed to fetch media' });
     }
 });
 
