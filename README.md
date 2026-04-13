@@ -124,7 +124,7 @@ Zeader is fully responsive and supports mobile devices with intuitive touch gest
 1. Clone the repository:
    ```bash
    git clone https://github.com/AsleepX/zeader-rss.git
-   cd rss-reader
+   cd zeader-rss
    ```
 
 2. Install dependencies:
