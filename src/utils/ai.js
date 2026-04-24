@@ -34,6 +34,12 @@ export const extractAnthropicText = (data) => {
         .join('');
 };
 
+export const sanitizeAIText = (text) => (text || '')
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/```(?:yaml|yml|markdown|md)?/gi, '')
+    .replace(/```/g, '')
+    .trim();
+
 const parseAnthropicError = async (response) => {
     const fallback = `HTTP ${response.status}`;
     try {

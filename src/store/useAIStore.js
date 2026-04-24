@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import OpenAI from 'openai';
 import { useAuthStore } from './useAuthStore';
-import { AI_FORMATS, createAnthropicMessage, extractAnthropicText, getAIProxyBaseUrl, getAIProxyHeaders } from '../utils/ai';
+import { AI_FORMATS, createAnthropicMessage, extractAnthropicText, getAIProxyBaseUrl, getAIProxyHeaders, sanitizeAIText } from '../utils/ai';
 
 export const useAIStore = create(
     persist(
@@ -63,7 +63,7 @@ export const useAIStore = create(
                             token,
                         });
 
-                        set({ aiStatus: 'success', aiResult: extractAnthropicText(response) || 'No response from AI.' });
+                        set({ aiStatus: 'success', aiResult: sanitizeAIText(extractAnthropicText(response)) || 'No response from AI.' });
                         return;
                     }
 
@@ -82,7 +82,7 @@ export const useAIStore = create(
                         model: modelName,
                     });
 
-                    const result = completion.choices[0]?.message?.content || 'No response from AI.';
+                    const result = sanitizeAIText(completion.choices[0]?.message?.content) || 'No response from AI.';
                     set({ aiStatus: 'success', aiResult: result });
                 } catch (error) {
                     console.error('AI Generation Error:', error);
@@ -124,7 +124,7 @@ export const useAIStore = create(
                         token,
                     });
 
-                    return extractAnthropicText(response);
+                    return sanitizeAIText(extractAnthropicText(response));
                 }
 
                 const openai = new OpenAI({
@@ -149,7 +149,7 @@ export const useAIStore = create(
 
                 const completion = await openai.chat.completions.create(completionOptions);
 
-                return completion.choices[0]?.message?.content || '';
+                return sanitizeAIText(completion.choices[0]?.message?.content);
             },
         }),
         {

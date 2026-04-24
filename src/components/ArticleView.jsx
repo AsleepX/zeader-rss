@@ -452,22 +452,29 @@ Summary: 三句话摘要
 `;
         const result = await generateText(prompt);
 
-        // Parse YAML-like output manually
+        // Parse YAML-like output manually. Some compatible providers wrap
+        // structured answers or emit multiline values, so keep this tolerant.
         const parsedData = {};
-        const lines = result.split('\n');
+        const lines = result.replace(/```(?:yaml|yml)?/gi, '').replace(/```/g, '').split('\n');
+        let currentKey = null;
+
         lines.forEach(line => {
-          const match = line.match(/^([a-zA-Z]+):\s*(.+)$/);
-          if (match) {
-            const key = match[1].trim();
-            const value = match[2].trim();
-            // Handle Tags as array, remove brackets if present
-            if (key === 'Tags') {
-              const cleanValue = value.replace(/^\[|\]$/g, '');
-              parsedData[key] = cleanValue.split(',').map(t => t.trim().replace(/^\[|\]$/g, ''));
-            } else {
-              parsedData[key] = value;
+            const match = line.match(/^([a-zA-Z]+):\s*(.+)$/);
+            if (match) {
+                const key = match[1].trim();
+                const value = match[2].trim();
+                currentKey = key;
+
+                // Handle Tags as array, remove brackets if present
+                if (key === 'Tags') {
+                    const cleanValue = value.replace(/^\[|\]$/g, '');
+                    parsedData[key] = cleanValue.split(',').map(t => t.trim().replace(/^\[|\]$/g, ''));
+                } else {
+                    parsedData[key] = value === '|' || value === '>' ? '' : value;
+                }
+            } else if (currentKey && line.trim() && parsedData[currentKey] !== undefined) {
+                parsedData[currentKey] = `${parsedData[currentKey]} ${line.trim().replace(/^-\s*/, '')}`.trim();
             }
-          }
         });
 
         if (Object.keys(parsedData).length > 0) {
