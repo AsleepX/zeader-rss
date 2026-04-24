@@ -29,6 +29,58 @@ const stripHtml = (html) => {
   return doc.body.textContent || '';
 };
 
+const parseZymalSummary = (result) => {
+  const cleaned = (result || '')
+    .replace(/```(?:yaml|yml|markdown|md)?/gi, '')
+    .replace(/```/g, '')
+    .trim();
+
+  const parsedData = {};
+  const lines = cleaned.split('\n');
+  let currentKey = null;
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+
+    const match = trimmed.match(/^([a-zA-Z]+):\s*(.*)$/);
+    if (match) {
+      const key = match[1].trim();
+      const value = match[2].trim();
+      currentKey = key;
+
+      if (key === 'Tags') {
+        const cleanValue = value.replace(/^\[|\]$/g, '');
+        parsedData[key] = cleanValue
+          ? cleanValue.split(/[,，]/).map(t => t.trim().replace(/^[-\s]+/, '').replace(/^\[|\]$/g, '')).filter(Boolean)
+          : [];
+      } else {
+        parsedData[key] = value === '|' || value === '>' ? '' : value;
+      }
+      return;
+    }
+
+    if (currentKey && parsedData[currentKey] !== undefined) {
+      const value = trimmed.replace(/^[-*]\s*/, '');
+      if (currentKey === 'Tags' && Array.isArray(parsedData.Tags)) {
+        parsedData.Tags.push(value);
+      } else {
+        parsedData[currentKey] = `${parsedData[currentKey]} ${value}`.trim();
+      }
+    }
+  });
+
+  if (!parsedData.Summary && cleaned) {
+    parsedData.Summary = cleaned;
+  }
+
+  if (!parsedData.Title && !parsedData.Tags?.length && !parsedData.Summary) {
+    return null;
+  }
+
+  return parsedData;
+};
+
 // Helper to estimate read time
 const estimateReadTime = (text) => {
   const wordsPerMinute = 200;
@@ -452,32 +504,9 @@ Summary: 三句话摘要
 `;
         const result = await generateText(prompt);
 
-        // Parse YAML-like output manually. Some compatible providers wrap
-        // structured answers or emit multiline values, so keep this tolerant.
-        const parsedData = {};
-        const lines = result.replace(/```(?:yaml|yml)?/gi, '').replace(/```/g, '').split('\n');
-        let currentKey = null;
+        const parsedData = parseZymalSummary(result);
 
-        lines.forEach(line => {
-            const match = line.match(/^([a-zA-Z]+):\s*(.+)$/);
-            if (match) {
-                const key = match[1].trim();
-                const value = match[2].trim();
-                currentKey = key;
-
-                // Handle Tags as array, remove brackets if present
-                if (key === 'Tags') {
-                    const cleanValue = value.replace(/^\[|\]$/g, '');
-                    parsedData[key] = cleanValue.split(',').map(t => t.trim().replace(/^\[|\]$/g, ''));
-                } else {
-                    parsedData[key] = value === '|' || value === '>' ? '' : value;
-                }
-            } else if (currentKey && line.trim() && parsedData[currentKey] !== undefined) {
-                parsedData[currentKey] = `${parsedData[currentKey]} ${line.trim().replace(/^-\s*/, '')}`.trim();
-            }
-        });
-
-        if (Object.keys(parsedData).length > 0) {
+        if (parsedData) {
           setZymalData(parsedData);
         }
 
