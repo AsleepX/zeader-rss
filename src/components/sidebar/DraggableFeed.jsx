@@ -30,13 +30,13 @@ export const DraggableFeed = ({ feed, onRemove, isSelected, onClick, onContextMe
                 isSelected ? "bg-primary-100 text-primary-700" : "hover:bg-gray-50"
             )}
         >
-            <div className="flex items-center gap-3 overflow-hidden">
-                <div className={clsx("w-1 h-1 rounded-full transition-colors", isSelected ? "bg-primary-400" : "bg-primary-400 group-hover:bg-primary-400")} />
-                <span className={clsx("text-sm truncate", isSelected ? "text-primary-900 font-medium" : "text-gray-600 group-hover:text-gray-900")}>{feed.title}</span>
+            <div className="flex min-w-0 items-center gap-3 overflow-hidden">
+                <div className={clsx("h-1 w-1 shrink-0 rounded-full transition-colors", isSelected ? "bg-primary-400" : "bg-primary-400 group-hover:bg-primary-400")} />
+                <span className={clsx("min-w-0 truncate text-sm", isSelected ? "text-primary-900 font-medium" : "text-gray-600 group-hover:text-gray-900")}>{feed.title}</span>
             </div>
             <button
                 onClick={(e) => { e.stopPropagation(); onRemove(feed.id); }}
-                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
+                className="shrink-0 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
                 onPointerDown={(e) => e.stopPropagation()}
             >
                 <Trash2 className="w-3.5 h-3.5" />
