@@ -441,6 +441,10 @@ const getTargetBaseUrl = (req) => {
         throw new Error('Unsupported AI target base URL protocol');
     }
 
+    if (targetBase.hostname === 'api.minimax.com' || targetBase.hostname === 'api.minimaxi.com') {
+        targetBase.hostname = 'api.minimax.io';
+    }
+
     return targetBase.toString().replace(/\/$/, '');
 };
 

@@ -3,7 +3,20 @@ export const AI_FORMATS = {
     ANTHROPIC: 'anthropic',
 };
 
-export const normalizeAIBaseUrl = (apiBase) => (apiBase || '').replace(/\/+$/, '');
+export const normalizeAIBaseUrl = (apiBase) => {
+    const trimmed = (apiBase || '').trim().replace(/\/+$/, '');
+    if (!trimmed) return '';
+
+    try {
+        const url = new URL(trimmed);
+        if (url.hostname === 'api.minimax.com' || url.hostname === 'api.minimaxi.com') {
+            url.hostname = 'api.minimax.io';
+        }
+        return url.toString().replace(/\/+$/, '');
+    } catch {
+        return trimmed;
+    }
+};
 
 export const getAIProxyBaseUrl = (apiFormat) => `${window.location.origin}/api/ai/${apiFormat || AI_FORMATS.OPENAI}`;
 
