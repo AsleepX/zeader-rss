@@ -7,8 +7,6 @@ import { useAIStore } from '../store/useAIStore';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 
 export function FeedDetailModal({ item, onClose, originRect }) {
-    if (!item) return null;
-
     const modalRef = useRef(null);
     const { generateText, language, isAIEnabled } = useAIStore();
     const [zymalData, setZymalData] = useState(null);
@@ -42,6 +40,8 @@ export function FeedDetailModal({ item, onClose, originRect }) {
     // Z YMAL Generation
     useEffect(() => {
         const generateZymal = async () => {
+            if (!item) return;
+
             // Check if AI is enabled
             if (!isAIEnabled) return;
 
@@ -127,14 +127,10 @@ Summary: 渚光希与久留木玲出演的AV作品
         generateZymal();
     }, [item, language, generateText, isAIEnabled]);
 
+    if (!item) return null;
+
     // Get embed URL for video
     const embedUrl = getEmbedUrl(item.link);
-
-    // Extract video poster image
-    const getVideoPoster = () => {
-        const posterMatch = item.content?.match(/<video[^>]+poster="([^"]+)"/);
-        return posterMatch ? posterMatch[1] : null;
-    };
 
     // Function to safely render HTML content
     // We need to ensure images are styled correctly within the content

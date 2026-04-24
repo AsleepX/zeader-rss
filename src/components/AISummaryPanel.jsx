@@ -33,7 +33,7 @@ const formatDate = (dateStr) => {
 
 export function AISummaryPanel({ isOpen, onClose, onSelectArticle }) {
     const { apiBase, apiKey, modelName, language, isAIEnabled } = useAIStore();
-    const { feeds, showUnreadOnly } = useFeedStore();
+    const { feeds } = useFeedStore();
     const { token } = useAuthStore();
 
     const [streamingContent, setStreamingContent] = useState('');

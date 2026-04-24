@@ -1,15 +1,13 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MoreHorizontal, Copy, Check, Play } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FeedDetailModal } from './FeedDetailModal';
 import { useFeedStore } from '../store/useFeedStore';
-import { useAIStore } from '../store/useAIStore';
 
 export function VideoView({ feeds }) {
     const [selectedItem, setSelectedItem] = useState(null);
     const [originRect, setOriginRect] = useState(null);
-    const [copiedId, setCopiedId] = useState(null);
     const [focusedIndex, setFocusedIndex] = useState(-1);
     const [isKeyboardMode, setIsKeyboardMode] = useState(false);
     const [tempReadIds, setTempReadIds] = useState(new Set());
@@ -188,7 +186,7 @@ export function VideoView({ feeds }) {
                 case 'ArrowUp':
                     nextIndex = focusedIndex - numColumns;
                     break;
-                case 'Enter':
+                case 'Enter': {
                     e.preventDefault();
                     const item = allItems[focusedIndex];
                     if (item) {
@@ -211,6 +209,7 @@ export function VideoView({ feeds }) {
                         }
                     }
                     return;
+                }
                 default:
                     return;
             }

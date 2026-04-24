@@ -163,7 +163,8 @@ app.delete('/api/folders/:id', (req, res) => {
         // Also remove folderId from feeds that were in this folder
         data.feeds = data.feeds.map(feed => {
             if (feed.folderId === id) {
-                const { folderId, ...rest } = feed;
+                const rest = { ...feed };
+                delete rest.folderId;
                 return rest;
             }
             return feed;

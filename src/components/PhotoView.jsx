@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MoreHorizontal, Copy, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FeedDetailModal } from './FeedDetailModal';
 import { useFeedStore } from '../store/useFeedStore';
-import { useAIStore } from '../store/useAIStore';
 
 export function PhotoView({ feeds }) {
   const [selectedItem, setSelectedItem] = useState(null);
@@ -190,7 +189,7 @@ export function PhotoView({ feeds }) {
         case 'ArrowUp':
           nextIndex = focusedIndex - numColumns;
           break;
-        case 'Enter':
+        case 'Enter': {
           e.preventDefault();
           const item = allItems[focusedIndex];
           if (item) {
@@ -213,6 +212,7 @@ export function PhotoView({ feeds }) {
             }
           }
           return;
+        }
         default:
           return;
       }

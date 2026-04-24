@@ -994,8 +994,6 @@ ${block.text}`;
 
     document.addEventListener('click', handleClick, true);
     return () => document.removeEventListener('click', handleClick, true);
-    document.addEventListener('click', handleClick, true);
-    return () => document.removeEventListener('click', handleClick, true);
   }, [selectedHighlightMark, handleEditAnnotation]);
 
   // Auto-select newly created annotation
@@ -1473,9 +1471,7 @@ Action: Translate into authentic, high-quality English.
           // Capture for annotation
           pendingMarkRef.current = mark;
 
-          // Find block index
-          let currentBlockEl = mark.closest('[data-block-index]'); // Note: We need to ensure blocks have this attr or find index another way.
-          // Alternatively, find index by comparing containment in blockRefs
+          // Find block index by comparing containment in blockRefs.
           let foundIndex = -1;
           blockRefs.current.forEach((el, idx) => {
             if (el && el.contains(mark)) foundIndex = idx;

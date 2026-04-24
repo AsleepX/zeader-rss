@@ -46,7 +46,7 @@ function App() {
   // Custom CSS State
   const [showCustomCSSModal, setShowCustomCSSModal] = useState(false);
 
-  const { feeds, folders, loadFeeds, refreshAllFeeds, isLoading, selectedSource, selectSource } = useFeedStore();
+  const { feeds, folders, loadFeeds, selectedSource, selectSource } = useFeedStore();
   const { applyTheme } = useThemeStore();
   const { isAuthenticated } = useAuthStore();
 
@@ -66,10 +66,6 @@ function App() {
       loadFeeds();
     }
   }, [loadFeeds, isAuthenticated]);
-
-  if (!isAuthenticated) {
-    return <Login />;
-  }
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -107,6 +103,10 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectSource]);
+
+  if (!isAuthenticated) {
+    return <Login />;
+  }
 
   const currentFeeds = feeds.filter(f => {
     // First filter by viewType
@@ -259,6 +259,10 @@ function App() {
           isOpen={isMobileSettingsOpen}
           onClose={() => setIsMobileSettingsOpen(false)}
           onAddFeed={() => setIsAddModalOpen(true)}
+          onCreateFolder={() => {
+            setCreateFolderType(currentView);
+            setIsCreateFolderModalOpen(true);
+          }}
           onImportOpml={() => setIsImportOpmlModalOpen(true)}
           onExportOpml={handleExportOpml}
           onCleanup={() => setShowCleanupConfirm(true)}
@@ -275,7 +279,7 @@ function App() {
       <CreateFolderModal
         isOpen={isCreateFolderModalOpen}
         onClose={() => setIsCreateFolderModalOpen(false)}
-        type={createFolderType}
+        type={createFolderType || currentView}
       />
 
       <ImportOpmlModal

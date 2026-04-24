@@ -4,9 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useFeedStore } from '../store/useFeedStore';
 import { useThemeStore } from '../store/useThemeStore';
 import { useAIStore } from '../store/useAIStore';
-import { api } from '../utils/api';
 import clsx from 'clsx';
-import { DndContext, useDraggable, useDroppable, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { DndContext, useDroppable, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { createPortal } from 'react-dom';
 
@@ -354,6 +353,16 @@ export function Sidebar({ currentView, setCurrentView, onAddFeed, onCreateFolder
                       title="Add New Feed"
                     >
                       <Plus className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        onCreateFolder(currentView);
+                        setIsSettingsOpen(false);
+                      }}
+                      className="flex-1 h-8 flex items-center justify-center bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg transition-colors"
+                      title="Create New Folder"
+                    >
+                      <Folder className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => {

@@ -49,7 +49,7 @@ export const useFeedStore = create((set, get) => ({
                     return parsed;
                 }
             }
-        } catch (e) {}
+                    } catch {}
         return { type: 'all', id: null };
     })(),
     showUnreadOnly: false,
@@ -217,7 +217,7 @@ export const useFeedStore = create((set, get) => ({
 
                 const category = getCategoryFromUrl(url);
                 if (category) {
-                    const { feeds, folders } = get();
+                    const { feeds } = get();
                     // Only consider feeds with the SAME viewType for auto-grouping
                     const sameCategoryFeeds = feeds.filter(f => 
                         getCategoryFromUrl(f.url) === category && f.viewType === viewType
@@ -638,4 +638,3 @@ export const useFeedStore = create((set, get) => ({
         }
     }
 }));
-

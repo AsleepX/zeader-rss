@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React from 'react';
 import { Play, Pause, X, SkipBack, SkipForward, Volume2, VolumeX, Settings, Gauge, Mic, Calendar, User } from 'lucide-react';
 import { useTTSStore } from '../store/useTTSStore';
 import { motion, AnimatePresence } from 'framer-motion';

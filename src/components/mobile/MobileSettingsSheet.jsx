@@ -1,10 +1,10 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Upload, Download, Trash2, Sparkles, Palette } from 'lucide-react';
+import { X, Plus, Upload, Download, Trash2, Sparkles, Palette, Folder } from 'lucide-react';
 import { useThemeStore } from '../../store/useThemeStore';
 
-export const MobileSettingsSheet = ({ isOpen, onClose, onAddFeed, onImportOpml, onExportOpml, onCleanup, onConfigureAI, onCustomCSS }) => {
+export const MobileSettingsSheet = ({ isOpen, onClose, onAddFeed, onCreateFolder, onImportOpml, onExportOpml, onCleanup, onConfigureAI, onCustomCSS }) => {
     const { themeColor, setThemeColor } = useThemeStore();
 
     return createPortal(
@@ -35,6 +35,9 @@ export const MobileSettingsSheet = ({ isOpen, onClose, onAddFeed, onImportOpml, 
                         <div className="p-4 space-y-2">
                             <button onClick={() => { onAddFeed(); onClose(); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl text-left font-medium text-gray-700">
                                 <Plus className="w-5 h-5" /> Add New Feed
+                            </button>
+                            <button onClick={() => { onCreateFolder(); onClose(); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl text-left font-medium text-gray-700">
+                                <Folder className="w-5 h-5" /> Create New Folder
                             </button>
                             <button onClick={() => { onImportOpml(); onClose(); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl text-left font-medium text-gray-700">
                                 <Download className="w-5 h-5" /> Import OPML
