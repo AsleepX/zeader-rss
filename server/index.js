@@ -430,6 +430,88 @@ const handleAIProxy = async (req, res, targetBaseUrl) => {
     }
 };
 
+const getTargetBaseUrl = (req) => {
+    const rawTargetBase = req.headers['x-ai-target-base'];
+    if (!rawTargetBase || Array.isArray(rawTargetBase)) {
+        throw new Error('Missing AI target base URL');
+    }
+
+    const targetBase = new URL(rawTargetBase);
+    if (!['http:', 'https:'].includes(targetBase.protocol)) {
+        throw new Error('Unsupported AI target base URL protocol');
+    }
+
+    return targetBase.toString().replace(/\/$/, '');
+};
+
+const handleGenericAIProxy = async (req, res) => {
+    try {
+        const targetBaseUrl = getTargetBaseUrl(req);
+        const targetUrl = `${targetBaseUrl}${req.path}`;
+        const isStreaming = req.body?.stream === true;
+
+        console.log(`Proxying generic AI request to: ${targetUrl}`);
+
+        const headers = {
+            'Content-Type': req.headers['content-type'] || 'application/json',
+        };
+
+        if (req.headers.authorization) headers.Authorization = req.headers.authorization;
+        if (req.headers['x-api-key']) headers['X-API-Key'] = req.headers['x-api-key'];
+        if (req.headers['anthropic-version']) headers['Anthropic-Version'] = req.headers['anthropic-version'];
+        if (req.headers['anthropic-beta']) headers['Anthropic-Beta'] = req.headers['anthropic-beta'];
+        if (req.headers['openai-organization']) headers['OpenAI-Organization'] = req.headers['openai-organization'];
+        if (req.headers['openai-project']) headers['OpenAI-Project'] = req.headers['openai-project'];
+
+        const response = await fetch(targetUrl, {
+            method: req.method,
+            headers,
+            body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body)
+        });
+
+        if (isStreaming && response.ok) {
+            res.setHeader('Content-Type', response.headers.get('content-type') || 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.setHeader('X-Accel-Buffering', 'no');
+
+            if (response.body) {
+                const reader = response.body.getReader();
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        res.write(value);
+                    }
+                } catch (streamError) {
+                    console.error('Generic AI stream error:', streamError);
+                } finally {
+                    res.end();
+                }
+            } else {
+                res.status(500).json({ error: 'No response body for streaming' });
+            }
+            return;
+        }
+
+        const contentType = response.headers.get('content-type');
+        res.status(response.status);
+        if (contentType) res.set('Content-Type', contentType);
+
+        if (contentType && contentType.includes('application/json')) {
+            res.json(await response.json());
+        } else {
+            const arrayBuffer = await response.arrayBuffer();
+            res.send(Buffer.from(arrayBuffer));
+        }
+    } catch (error) {
+        console.error('Generic AI Proxy Error:', error);
+        res.status(500).json({ error: error.message || 'Failed to proxy AI request' });
+    }
+};
+
+app.use('/api/ai/openai', handleGenericAIProxy);
+app.use('/api/ai/anthropic', handleGenericAIProxy);
 app.use('/api/moonshot/v1', (req, res) => handleAIProxy(req, res, 'https://api.moonshot.cn/v1'));
 app.use('/api/gemini/v1beta/openai', (req, res) => handleAIProxy(req, res, 'https://generativelanguage.googleapis.com/v1beta/openai'));
 app.use('/api/siliconflow/v1', (req, res) => handleAIProxy(req, res, 'https://api.siliconflow.cn/v1'));

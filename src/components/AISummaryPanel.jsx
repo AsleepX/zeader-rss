@@ -5,6 +5,7 @@ import { useAIStore } from '../store/useAIStore';
 import { useFeedStore } from '../store/useFeedStore';
 import { useAuthStore } from '../store/useAuthStore';
 import OpenAI from 'openai';
+import { AI_FORMATS, getAIProxyBaseUrl, getAIProxyHeaders, streamAnthropicMessage } from '../utils/ai';
 
 // Add custom scrollbar hiding styles
 const scrollbarHideStyles = `
@@ -32,7 +33,7 @@ const formatDate = (dateStr) => {
 };
 
 export function AISummaryPanel({ isOpen, onClose, onSelectArticle }) {
-    const { apiBase, apiKey, modelName, language, isAIEnabled } = useAIStore();
+    const { apiBase, apiKey, apiFormat, modelName, language, isAIEnabled } = useAIStore();
     const { feeds } = useFeedStore();
     const { token } = useAuthStore();
 
@@ -121,16 +122,6 @@ export function AISummaryPanel({ isOpen, onClose, onSelectArticle }) {
         setStreamingContent('');
         setError(null);
 
-        // Prepare API base URL with proxy
-        let finalApiBase = apiBase;
-        if (apiBase.includes('api.moonshot.cn')) {
-            finalApiBase = `${window.location.origin}/api/moonshot/v1`;
-        } else if (apiBase.includes('generativelanguage.googleapis.com')) {
-            finalApiBase = `${window.location.origin}/api/gemini/v1beta/openai/`;
-        } else if (apiBase.includes('api.siliconflow.cn')) {
-            finalApiBase = `${window.location.origin}/api/siliconflow/v1`;
-        }
-
         // Prepare article data for the prompt
         const articlesData = unreadArticles.slice(0, 50).map((article, index) => ({
             refIndex: index + 1,
@@ -176,18 +167,32 @@ Use Markdown formatting. Keep the response well-organized and scannable.`;
         try {
             abortControllerRef.current = new AbortController();
 
+            const system = `You are a helpful AI news digest assistant. Always respond in ${language}.`;
+
+            if (apiFormat === AI_FORMATS.ANTHROPIC) {
+                await streamAnthropicMessage({
+                    apiBase,
+                    apiKey,
+                    modelName,
+                    system,
+                    messages: [{ role: 'user', content: prompt }],
+                    token,
+                    signal: abortControllerRef.current.signal,
+                    onText: (content) => setStreamingContent(prev => prev + content),
+                });
+                return;
+            }
+
             const openai = new OpenAI({
-                baseURL: finalApiBase,
+                baseURL: getAIProxyBaseUrl(AI_FORMATS.OPENAI),
                 apiKey: apiKey,
                 dangerouslyAllowBrowser: true,
-                defaultHeaders: {
-                    'X-App-Token': token
-                }
+                defaultHeaders: getAIProxyHeaders({ apiBase, token }),
             });
 
             const stream = await openai.chat.completions.create({
                 messages: [
-                    { role: "system", content: `You are a helpful AI news digest assistant. Always respond in ${language}.` },
+                    { role: "system", content: system },
                     { role: "user", content: prompt }
                 ],
                 model: modelName,
@@ -218,7 +223,7 @@ Use Markdown formatting. Keep the response well-organized and scannable.`;
             setIsGenerating(false);
             abortControllerRef.current = null;
         }
-    }, [apiBase, apiKey, modelName, language, isAIEnabled, token, getUnreadArticles]);
+    }, [apiBase, apiKey, apiFormat, modelName, language, isAIEnabled, token, getUnreadArticles]);
 
     // Start generation when panel opens
     useEffect(() => {

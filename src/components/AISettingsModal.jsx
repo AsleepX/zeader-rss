@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, Settings } from 'lucide-react';
 import { useAIStore } from '../store/useAIStore';
+import { AI_FORMATS } from '../utils/ai';
 
 export function AISettingsModal() {
-    const { isAISettingsOpen, closeAISettings, apiBase, apiKey, voiceApiKey, modelName, audioModel, language, isAIEnabled, updateSettings } = useAIStore();
+    const { isAISettingsOpen, closeAISettings, apiBase, apiKey, voiceApiKey, apiFormat, modelName, audioModel, language, isAIEnabled, updateSettings } = useAIStore();
 
     // Local state for form inputs to avoid excessive store updates/re-renders while typing
     const [localSettings, setLocalSettings] = useState({
         apiBase: '',
         apiKey: '',
+        apiFormat: AI_FORMATS.OPENAI,
         modelName: '',
         audioModel: '',
         language: '',
@@ -21,6 +23,7 @@ export function AISettingsModal() {
             setLocalSettings({
                 apiBase: apiBase || 'https://api.openai.com/v1',
                 apiKey: apiKey || '',
+                apiFormat: apiFormat || AI_FORMATS.OPENAI,
                 modelName: modelName || 'gpt-3.5-turbo',
                 voiceApiKey: voiceApiKey || '',
                 audioModel: audioModel || 'IndexTeam/IndexTTS-2',
@@ -28,7 +31,7 @@ export function AISettingsModal() {
                 isAIEnabled: isAIEnabled !== undefined ? isAIEnabled : true
             });
         }
-    }, [isAISettingsOpen, apiBase, apiKey, voiceApiKey, modelName, audioModel, language, isAIEnabled]);
+    }, [isAISettingsOpen, apiBase, apiKey, voiceApiKey, apiFormat, modelName, audioModel, language, isAIEnabled]);
 
     const handleSave = () => {
         updateSettings(localSettings);
@@ -83,6 +86,20 @@ export function AISettingsModal() {
                             />
                             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                         </label>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">API Format</label>
+                        <select
+                            value={localSettings.apiFormat}
+                            onChange={(e) => setLocalSettings(prev => ({ ...prev, apiFormat: e.target.value }))}
+                            disabled={!localSettings.isAIEnabled}
+                            className={`w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all bg-white ${!localSettings.isAIEnabled ? 'bg-gray-100 text-gray-400' : ''}`}
+                        >
+                            <option value={AI_FORMATS.OPENAI}>OpenAI compatible</option>
+                            <option value={AI_FORMATS.ANTHROPIC}>Anthropic compatible</option>
+                        </select>
+                        <p className="text-xs text-gray-400 mt-1">Choose the API protocol supported by your provider.</p>
                     </div>
 
                     <div>

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import OpenAI from 'openai';
 import { useAuthStore } from './useAuthStore';
+import { AI_FORMATS, createAnthropicMessage, extractAnthropicText, getAIProxyBaseUrl, getAIProxyHeaders } from '../utils/ai';
 
 export const useAIStore = create(
     persist(
@@ -10,6 +11,7 @@ export const useAIStore = create(
             apiBase: 'https://api.openai.com/v1',
             apiKey: '',
             voiceApiKey: '', // Separate key for TTS
+            apiFormat: AI_FORMATS.OPENAI,
 
             modelName: 'gpt-4o',
             audioModel: 'IndexTeam/IndexTTS-2', // Default TTS model
@@ -38,7 +40,7 @@ export const useAIStore = create(
             closeAIModal: () => set({ isAIModalOpen: false, aiStatus: 'idle' }),
 
             generateAIResponse: async (context) => {
-                const { apiBase, apiKey, modelName, language, isAIEnabled } = get();
+                const { apiBase, apiKey, apiFormat, modelName, language, isAIEnabled } = get();
                 const { token } = useAuthStore.getState();
 
                 if (!isAIEnabled) return;
@@ -48,34 +50,33 @@ export const useAIStore = create(
                     return;
                 }
 
-                let finalApiBase = apiBase;
-
-                // Use proxy for Moonshot
-                if (apiBase.includes('api.moonshot.cn')) {
-                    finalApiBase = `${window.location.origin}/api/moonshot/v1`;
-                }
-                // Use proxy for Gemini
-                else if (apiBase.includes('generativelanguage.googleapis.com')) {
-                    finalApiBase = `${window.location.origin}/api/gemini/v1beta/openai/`;
-                }
-                // Use proxy for SiliconFlow
-                else if (apiBase.includes('api.siliconflow.cn')) {
-                    finalApiBase = `${window.location.origin}/api/siliconflow/v1`;
-                }
-
                 try {
+                    const system = `You are a helpful AI assistant integrated into an RSS reader. Your goal is to help the user understand, summarize, or analyze the content they are reading. Please answer in ${language}. Be concise and insightful.`;
+
+                    if (apiFormat === AI_FORMATS.ANTHROPIC) {
+                        const response = await createAnthropicMessage({
+                            apiBase,
+                            apiKey,
+                            modelName,
+                            system,
+                            messages: [{ role: 'user', content: context }],
+                            token,
+                        });
+
+                        set({ aiStatus: 'success', aiResult: extractAnthropicText(response) || 'No response from AI.' });
+                        return;
+                    }
+
                     const openai = new OpenAI({
-                        baseURL: finalApiBase,
+                        baseURL: getAIProxyBaseUrl(AI_FORMATS.OPENAI),
                         apiKey: apiKey,
                         dangerouslyAllowBrowser: true, // Required for client-side usage
-                        defaultHeaders: {
-                            'X-App-Token': token // Pass app auth token
-                        }
+                        defaultHeaders: getAIProxyHeaders({ apiBase, token }),
                     });
 
                     const completion = await openai.chat.completions.create({
                         messages: [
-                            { role: "system", content: `You are a helpful AI assistant integrated into an RSS reader. Your goal is to help the user understand, summarize, or analyze the content they are reading. Please answer in ${language}. Be concise and insightful.` },
+                            { role: "system", content: system },
                             { role: "user", content: context }
                         ],
                         model: modelName,
@@ -100,7 +101,7 @@ export const useAIStore = create(
             },
 
             generateText: async (context, options = {}) => {
-                const { apiBase, apiKey, modelName, language, isAIEnabled } = get();
+                const { apiBase, apiKey, apiFormat, modelName, language, isAIEnabled } = get();
                 const { token } = useAuthStore.getState();
 
                 if (!isAIEnabled) {
@@ -111,33 +112,31 @@ export const useAIStore = create(
                     throw new Error('Please configure your API Key in Settings -> Z\'s soul.');
                 }
 
-                let finalApiBase = apiBase;
+                const system = `You are a helpful AI assistant. Please answer in ${language}.`;
 
-                // Use proxy for Moonshot
-                if (apiBase.includes('api.moonshot.cn')) {
-                    finalApiBase = `${window.location.origin}/api/moonshot/v1`;
-                }
-                // Use proxy for Gemini
-                else if (apiBase.includes('generativelanguage.googleapis.com')) {
-                    finalApiBase = `${window.location.origin}/api/gemini/v1beta/openai/`;
-                }
-                // Use proxy for SiliconFlow
-                else if (apiBase.includes('api.siliconflow.cn')) {
-                    finalApiBase = `${window.location.origin}/api/siliconflow/v1`;
+                if (apiFormat === AI_FORMATS.ANTHROPIC) {
+                    const response = await createAnthropicMessage({
+                        apiBase,
+                        apiKey,
+                        modelName,
+                        system,
+                        messages: [{ role: 'user', content: context }],
+                        token,
+                    });
+
+                    return extractAnthropicText(response);
                 }
 
                 const openai = new OpenAI({
-                    baseURL: finalApiBase,
+                    baseURL: getAIProxyBaseUrl(AI_FORMATS.OPENAI),
                     apiKey: apiKey,
                     dangerouslyAllowBrowser: true,
-                    defaultHeaders: {
-                        'X-App-Token': token // Pass app auth token
-                    }
+                    defaultHeaders: getAIProxyHeaders({ apiBase, token }),
                 });
 
                 const completionOptions = {
                     messages: [
-                        { role: "system", content: `You are a helpful AI assistant. Please answer in ${language}.` },
+                        { role: "system", content: system },
                         { role: "user", content: context }
                     ],
                     model: modelName,
@@ -159,6 +158,7 @@ export const useAIStore = create(
                 apiBase: state.apiBase,
                 apiKey: state.apiKey,
                 voiceApiKey: state.voiceApiKey, // Persist voiceApiKey
+                apiFormat: state.apiFormat,
                 modelName: state.modelName,
                 audioModel: state.audioModel,
                 language: state.language,
