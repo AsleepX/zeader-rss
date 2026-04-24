@@ -9,8 +9,8 @@ export const normalizeAIBaseUrl = (apiBase) => {
 
     try {
         const url = new URL(trimmed);
-        if (url.hostname === 'api.minimax.com' || url.hostname === 'api.minimaxi.com') {
-            url.hostname = 'api.minimax.io';
+        if (url.hostname === 'api.minimax.com') {
+            url.hostname = 'api.minimaxi.com';
         }
         return url.toString().replace(/\/+$/, '');
     } catch {
