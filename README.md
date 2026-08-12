@@ -1,3 +1,5 @@
+
+
 # Zeader RSS Reader
 
 English | [简体中文](./README_zh-CN.md)
@@ -152,7 +154,7 @@ To deploy Zeader on a server, follow these steps:
 1.  **Clone the repository** on your server:
     ```bash
     git clone https://github.com/AsleepX/zeader-rss.git
-    cd rss-reader
+    cd zeader-rss
     ```
 
 2.  **Install dependencies**:
